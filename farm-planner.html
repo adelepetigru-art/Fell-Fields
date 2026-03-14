@@ -566,7 +566,7 @@
           <div class="num" id="stat-week-tasks">0</div>
           <div class="lbl">Tasks due this week</div>
         </div>
-        <div class="card dash-stat">
+        <div class="card dash-stat" onclick="showView('crops')" style="cursor:pointer;" title="View all crops">
           <div class="num" id="stat-crops">0</div>
           <div class="lbl">Active crops & trees</div>
         </div>
@@ -1980,7 +1980,19 @@ function openCropLayoutDetail(id) {
   const startMethod = startMatch ? startMatch[1] : '';
 
   document.getElementById('detail-title').textContent = c.name;
-  document.getElementById('detail-body').innerHTML = `
+
+  // Image — use cached Wikipedia photo or emoji fallback
+  const wikiTitle  = WIKI_TITLES[c.name];
+  const cachedUrl  = wikiTitle && getImgCache()[wikiTitle] && getImgCache()[wikiTitle].url;
+  const imgHtml = cachedUrl
+    ? `<img id="detail-crop-img" src="${esc(cachedUrl)}" alt="${esc(c.name)}"
+         style="width:100%;height:180px;object-fit:cover;border-radius:8px;margin-bottom:14px;"
+         onerror="this.style.display='none'">`
+    : `<div id="detail-crop-img" style="width:100%;height:100px;border-radius:8px;
+         background:var(--surface2);display:flex;align-items:center;justify-content:center;
+         font-size:56px;margin-bottom:14px;">${cropEmoji(c.name)}</div>`;
+
+  document.getElementById('detail-body').innerHTML = imgHtml + `
     <table style="width:100%;border-collapse:collapse;font-size:14px;line-height:1.9;">
       ${c.variety  ? `<tr><td style="color:var(--text-muted);width:115px;padding:3px 0;">Variety</td><td style="font-weight:500;">${esc(c.variety)}</td></tr>` : ''}
       ${source     ? `<tr><td style="color:var(--text-muted);padding:3px 0;">Source</td><td>${esc(source)}</td></tr>` : ''}
@@ -1991,6 +2003,20 @@ function openCropLayoutDetail(id) {
       ${startMethod   ? `<tr><td style="color:var(--text-muted);padding:3px 0;">Start method</td><td>${esc(startMethod)}</td></tr>` : ''}
       ${c.notes ? `<tr><td colspan="2" style="padding:10px 0 2px;border-top:1px solid var(--border);font-size:13px;color:var(--text-muted);line-height:1.6;">${esc(c.notes)}</td></tr>` : ''}
     </table>`;
+
+  // If we only have an emoji, fetch the Wikipedia image in the background and swap it in
+  if (!cachedUrl && wikiTitle) {
+    fetchWikiThumb(wikiTitle).then(url => {
+      if (!url) return;
+      const el = document.getElementById('detail-crop-img');
+      if (!el) return;
+      const img = document.createElement('img');
+      img.src = url; img.alt = c.name;
+      img.style.cssText = 'width:100%;height:180px;object-fit:cover;border-radius:8px;margin-bottom:14px;';
+      img.onerror = () => img.style.display = 'none';
+      el.replaceWith(img);
+    });
+  }
   document.getElementById('detail-footer').innerHTML = `
     <button class="btn btn-secondary btn-sm" onclick="editCrop('${esc(id)}');closeModal('detail')">Edit</button>
     <button class="btn btn-primary btn-sm" onclick="closeModal('detail')">Close</button>`;
