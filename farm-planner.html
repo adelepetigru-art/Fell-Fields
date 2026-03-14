@@ -1,0 +1,2340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fell Fields — Farm Planner</title>
+  <style>
+    :root {
+      --bg: #f7f4ef;
+      --surface: #ffffff;
+      --surface2: #f0ece4;
+      --border: #d9d3c7;
+      --text: #2c2a24;
+      --text-muted: #7a7568;
+      --accent: #4a7c59;
+      --accent-light: #e8f2ec;
+      --accent2: #8b6914;
+      --accent2-light: #faf3e0;
+      --warn: #c0392b;
+      --warn-light: #fdecea;
+      --tag-bg: #e8f2ec;
+      --radius: 8px;
+      --shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    /* Layout */
+    #app { display: flex; flex-direction: column; min-height: 100vh; }
+
+    header {
+      background: var(--accent);
+      color: white;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      height: 56px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; flex: 0 0 auto; }
+    header .subtitle { font-size: 13px; opacity: 0.75; }
+
+    nav {
+      display: flex;
+      gap: 4px;
+      margin-left: auto;
+    }
+
+    nav button {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.8);
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    nav button:hover { background: rgba(255,255,255,0.15); color: white; }
+    nav button.active { background: rgba(255,255,255,0.2); color: white; }
+
+    main { flex: 1; padding: 24px; max-width: 1100px; margin: 0 auto; width: 100%; }
+
+    /* Views */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    /* Grid helpers */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .stack { display: flex; flex-direction: column; gap: 12px; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-danger { background: var(--warn-light); color: var(--warn); border: 1px solid #e8b4b0; }
+    .btn-sm { padding: 4px 10px; font-size: 13px; }
+
+    /* Forms */
+    .form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+    .form-row label { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+    .form-row input, .form-row select, .form-row textarea {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+      background: var(--surface);
+      color: var(--text);
+      width: 100%;
+    }
+    .form-row textarea { resize: vertical; min-height: 80px; }
+    .form-row input:focus, .form-row select:focus, .form-row textarea:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+      border-color: transparent;
+    }
+    .form-inline { display: flex; gap: 8px; align-items: flex-end; }
+    .form-inline .form-row { flex: 1; margin-bottom: 0; }
+
+    /* Tags / badges */
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .tag-crop { background: var(--tag-bg); color: var(--accent); }
+    .tag-orchard { background: var(--accent2-light); color: var(--accent2); }
+    .tag-task { background: #e8f0fe; color: #3c5ea0; }
+    .tag-overdue { background: var(--warn-light); color: var(--warn); }
+    .tag-done { background: #f0f0f0; color: #888; }
+
+    /* Page headers */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .page-header h2 { font-size: 22px; font-weight: 700; }
+
+    /* ── DASHBOARD ─────────────────────────────────────── */
+    .dash-stat {
+      text-align: center;
+      padding: 20px;
+    }
+    .dash-stat .num { font-size: 36px; font-weight: 700; color: var(--accent); }
+    .dash-stat .lbl { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+    .week-list { list-style: none; }
+    .week-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .week-item:last-child { border-bottom: none; }
+    .week-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+    .dot-crop { background: var(--accent); }
+    .dot-orchard { background: var(--accent2); }
+    .dot-task { background: #3c5ea0; }
+    .dot-overdue { background: var(--warn); }
+
+    .week-item .item-title { font-weight: 500; font-size: 14px; }
+    .week-item .item-date { font-size: 12px; color: var(--text-muted); }
+
+    /* ── CALENDAR ──────────────────────────────────────── */
+    .cal-nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .cal-nav h3 { font-size: 18px; font-weight: 600; flex: 1; text-align: center; }
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+    .cal-day-name {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding: 6px 0;
+      text-transform: uppercase;
+    }
+    .cal-cell {
+      height: 100px;
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .cal-cell:hover { background: var(--surface2); }
+    .cal-cell.today { border-color: var(--accent); }
+    .cal-cell.other-month { opacity: 0.35; }
+    .cal-cell.weekend { background: #f0f8f3; }
+    .cal-cell.weekend:hover { background: #e2f2e9; }
+    .cal-day-name.weekend-name { color: var(--accent); font-weight: 700; }
+    .cal-cell .day-num {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 3px;
+    }
+    .cal-cell.today .day-num { color: var(--accent); }
+    .cal-event {
+      font-size: 11px;
+      padding: 1px 4px;
+      border-radius: 3px;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cal-event.crop { background: var(--accent-light); color: var(--accent); }
+    .cal-event.orchard { background: var(--accent2-light); color: var(--accent2); }
+    .cal-event.task { background: #e8f0fe; color: #3c5ea0; }
+
+    /* ── CROPS ─────────────────────────────────────────── */
+    .crop-list { list-style: none; }
+    .crop-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      margin-bottom: 10px;
+    }
+    .crop-icon {
+      font-size: 28px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .crop-info { flex: 1; min-width: 0; }
+    .crop-name { font-weight: 600; font-size: 16px; }
+    .crop-meta { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+    .crop-notes { font-size: 13px; color: var(--text-muted); margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+    .crop-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+    /* ── TASKS ─────────────────────────────────────────── */
+    .task-columns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .task-col-header {
+      font-weight: 600;
+      font-size: 14px;
+      padding: 10px 14px;
+      border-radius: 6px 6px 0 0;
+      border: 1px solid var(--border);
+      border-bottom: none;
+    }
+    .col-todo .task-col-header { background: #fef9e7; }
+    .col-doing .task-col-header { background: var(--accent-light); }
+    .col-done .task-col-header { background: #f0f0f0; }
+    .task-col-body {
+      border: 1px solid var(--border);
+      border-radius: 0 0 6px 6px;
+      background: var(--surface2);
+      padding: 10px;
+      min-height: 200px;
+    }
+    .task-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .task-card:hover { border-color: var(--accent); }
+    .task-card .t-title { font-weight: 500; font-size: 14px; }
+    .task-card .t-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .task-card.overdue { border-left: 3px solid var(--warn); }
+    .task-card.due-soon { border-left: 3px solid #e67e22; }
+
+    /* ── NOTES ─────────────────────────────────────────── */
+    .note-list { list-style: none; }
+    .note-item {
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      margin-bottom: 10px;
+    }
+    .note-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+    .note-title { font-weight: 600; }
+    .note-date { font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
+    .note-body { font-size: 14px; color: var(--text-muted); white-space: pre-wrap; }
+
+    /* ── MODAL ─────────────────────────────────────────── */
+    .modal-backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border-radius: 10px;
+      padding: 24px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .modal-header h3 { font-size: 18px; font-weight: 700; }
+    .modal-close {
+      background: none; border: none; font-size: 22px; cursor: pointer;
+      color: var(--text-muted); line-height: 1;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+
+    /* Empty states */
+    .empty {
+      text-align: center;
+      padding: 32px;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    .empty .icon { font-size: 36px; margin-bottom: 8px; }
+
+    /* Alerts */
+    .alert {
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+    .alert-info { background: var(--accent-light); color: var(--accent); border: 1px solid #b8d9c4; }
+    .alert-warn { background: var(--warn-light); color: var(--warn); border: 1px solid #e8b4b0; }
+
+    /* ── LAYOUT ────────────────────────────────────────── */
+    .layout-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .layout-block-header {
+      background: var(--accent);
+      color: white;
+      padding: 10px 16px;
+      font-weight: 700;
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .layout-block-header .block-dim {
+      font-size: 12px;
+      font-weight: 400;
+      opacity: 0.8;
+    }
+    .layout-row {
+      display: flex;
+      align-items: stretch;
+      border-bottom: 1px solid var(--border);
+      min-height: 80px;
+    }
+    .layout-row:last-child { border-bottom: none; }
+    .layout-row-num {
+      flex: 0 0 38px;
+      background: var(--surface2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+    .layout-row-body {
+      flex: 1;
+      padding: 8px 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .layout-chip {
+      display: inline-flex;
+      flex-direction: column;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      cursor: pointer;
+      min-width: 100px;
+      border: 1px solid rgba(0,0,0,0.06);
+      transition: filter 0.15s, box-shadow 0.15s;
+    }
+    .layout-chip:hover { filter: brightness(0.92); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    .layout-chip.dragging { opacity: 0.4; }
+    .layout-row-body.drag-over { background: rgba(34,197,94,0.08); outline: 2px dashed var(--accent); outline-offset: -3px; }
+    .layout-chip-name { font-weight: 700; font-size: 12px; margin-bottom: 3px; }
+    .layout-chip-meta { font-size: 10px; opacity: 0.75; }
+    .layout-chip-dates { font-size: 10px; opacity: 0.7; margin-top: 2px; }
+    .layout-arrow {
+      font-size: 13px;
+      color: var(--text-muted);
+      align-self: center;
+      padding: 0 2px;
+    }
+    .layout-row-note {
+      font-size: 11px;
+      color: var(--text-muted);
+      width: 100%;
+      margin-top: 2px;
+    }
+    /* family colors */
+    .fam-nightshade  { background: #fde8e8; color: #9b2c2c; }
+    .fam-cucurbit    { background: #fef3c7; color: #92400e; }
+    .fam-brassica    { background: #d1fae5; color: #065f46; }
+    .fam-root        { background: #ede9fe; color: #5b21b6; }
+    .fam-allium      { background: #fce7f3; color: #9d174d; }
+    .fam-legume      { background: #dbeafe; color: #1e40af; }
+    .fam-flower      { background: #fdf4ff; color: #7e22ce; }
+    .fam-radicchio   { background: #fee2e2; color: #991b1b; }
+    .fam-potato      { background: #f3f4f6; color: #374151; }
+    .layout-timeline {
+      width: 100%;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--border);
+    }
+    .layout-timeline-months {
+      position: relative;
+      height: 13px;
+      margin-bottom: 2px;
+    }
+    .layout-timeline-months span {
+      position: absolute;
+      font-size: 9px;
+      color: var(--text-muted);
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+    .layout-timeline-track {
+      position: relative;
+      height: 22px;
+      background: var(--surface2);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .layout-timeline-seg {
+      position: absolute;
+      top: 2px; bottom: 2px;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+      font-size: 9px;
+      font-weight: 600;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      border: 1px solid rgba(0,0,0,0.08);
+      cursor: default;
+    }
+    .layout-legend-item {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 12px; color: var(--text-muted);
+    }
+    .layout-legend-dot {
+      width: 10px; height: 10px; border-radius: 3px;
+    }
+
+    @media (max-width: 700px) {
+      .grid-2, .grid-3, .task-columns { grid-template-columns: 1fr; }
+      nav button { padding: 6px 10px; font-size: 13px; }
+      main { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Fell Fields</h1>
+    <span class="subtitle">Farm Planner</span>
+    <nav>
+      <button class="active" onclick="showView('dashboard')">Dashboard</button>
+      <button onclick="showView('calendar')">Calendar</button>
+      <button onclick="showView('crops')">Crops</button>
+      <button onclick="showView('tasks')">Tasks</button>
+      <button onclick="showView('notes')">Notes</button>
+      <button onclick="showView('layout')">Layout</button>
+    </nav>
+  </header>
+
+  <main>
+
+    <!-- ── DASHBOARD ──────────────────────────────────── -->
+    <div id="view-dashboard" class="view active">
+      <div class="page-header">
+        <div>
+          <h2 id="dash-greeting">Good morning</h2>
+          <div style="color:var(--text-muted);font-size:14px;" id="dash-date"></div>
+        </div>
+      </div>
+      <div id="seed-schedule-banner" class="alert alert-info" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <span>📦 2026 seed orders from Johnny's &amp; Row 7 are ready to load.</span>
+        <button class="btn btn-primary btn-sm" onclick="confirmLoadSeedSchedule()">Load 2026 Seed Schedule</button>
+      </div>
+      <div id="project-schedule-banner" class="alert alert-info" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <span>🏡 Stafford Galloway 2026 project tasks are ready to import.</span>
+        <button class="btn btn-primary btn-sm" onclick="loadProjectSchedule()">Import Project Tasks</button>
+      </div>
+
+      <div class="grid-3" style="margin-bottom:16px;">
+        <div class="card dash-stat">
+          <div class="num" id="stat-week-tasks">0</div>
+          <div class="lbl">Tasks due this week</div>
+        </div>
+        <div class="card dash-stat">
+          <div class="num" id="stat-crops">0</div>
+          <div class="lbl">Active crops & trees</div>
+        </div>
+        <div class="card dash-stat">
+          <div class="num" id="stat-overdue" style="color:var(--warn)">0</div>
+          <div class="lbl">Overdue tasks</div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">This week</div>
+          <ul class="week-list" id="dash-week"></ul>
+          <div class="empty" id="dash-week-empty" style="display:none;">
+            <div class="icon">🌱</div>Nothing scheduled this week. Add some tasks!
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Upcoming (next 30 days)</div>
+          <ul class="week-list" id="dash-upcoming"></ul>
+          <div class="empty" id="dash-upcoming-empty" style="display:none;">
+            <div class="icon">📅</div>Nothing coming up in the next 30 days.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CALENDAR ───────────────────────────────────── -->
+    <div id="view-calendar" class="view">
+      <div class="page-header">
+        <h2>Calendar</h2>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);cursor:pointer;">
+            <input type="checkbox" id="cal-weekend-only" onchange="renderCalendar()" style="accent-color:var(--accent);" />
+            Weekend tasks only
+          </label>
+          <button class="btn btn-secondary btn-sm" onclick="calMonth(-1)">← Prev</button>
+          <button class="btn btn-secondary btn-sm" onclick="calToday()">Today</button>
+          <button class="btn btn-secondary btn-sm" onclick="calMonth(1)">Next →</button>
+        </div>
+      </div>
+      <div class="card" style="padding:16px;">
+        <div class="cal-nav">
+          <h3 id="cal-title"></h3>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:12px;font-size:13px;color:var(--text-muted);">
+        <span><span style="background:var(--accent-light);color:var(--accent);padding:1px 7px;border-radius:3px;">■</span> Crop events</span>
+        <span><span style="background:var(--accent2-light);color:var(--accent2);padding:1px 7px;border-radius:3px;">■</span> Orchard events</span>
+        <span><span style="background:#e8f0fe;color:#3c5ea0;padding:1px 7px;border-radius:3px;">■</span> Tasks</span>
+      </div>
+    </div>
+
+    <!-- ── CROPS ──────────────────────────────────────── -->
+    <div id="view-crops" class="view">
+      <div class="page-header">
+        <h2>Crops &amp; Orchard</h2>
+        <button class="btn btn-primary" onclick="openModal('crop')">+ Add crop / tree</button>
+      </div>
+      <div style="margin-bottom:14px;display:flex;gap:8px;">
+        <button class="btn btn-secondary btn-sm" onclick="setCropFilter('all')" id="crop-filter-all">All</button>
+        <button class="btn btn-secondary btn-sm" onclick="setCropFilter('crop')" id="crop-filter-crop">Crops</button>
+        <button class="btn btn-secondary btn-sm" onclick="setCropFilter('orchard')" id="crop-filter-orchard">Orchard</button>
+      </div>
+      <ul class="crop-list" id="crop-list"></ul>
+      <div class="empty" id="crop-empty" style="display:none;">
+        <div class="icon">🌿</div>No crops added yet. Click "+ Add crop / tree" to get started.
+      </div>
+    </div>
+
+    <!-- ── TASKS ──────────────────────────────────────── -->
+    <div id="view-tasks" class="view">
+      <div class="page-header">
+        <h2>Tasks</h2>
+        <button class="btn btn-primary" onclick="openModal('task')">+ Add task</button>
+      </div>
+      <div class="task-columns">
+        <div class="col-todo">
+          <div class="task-col-header">📋 To Do <span id="cnt-todo" style="font-weight:400;color:var(--text-muted);"></span></div>
+          <div class="task-col-body" id="col-todo"></div>
+        </div>
+        <div class="col-doing">
+          <div class="task-col-header">🔨 In Progress <span id="cnt-doing" style="font-weight:400;color:var(--text-muted);"></span></div>
+          <div class="task-col-body" id="col-doing"></div>
+        </div>
+        <div class="col-done">
+          <div class="task-col-header">✅ Done <span id="cnt-done" style="font-weight:400;color:var(--text-muted);"></span></div>
+          <div class="task-col-body" id="col-done"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── LAYOUT ─────────────────────────────────────── -->
+    <div id="view-layout" class="view">
+      <div class="page-header">
+        <h2>Field Layout</h2>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;" id="layout-legend"></div>
+      </div>
+      <div class="grid-2" id="layout-blocks" style="align-items:start;"></div>
+    </div>
+
+    <!-- ── NOTES ──────────────────────────────────────── -->
+    <div id="view-notes" class="view">
+      <div class="page-header">
+        <h2>Notes &amp; Records</h2>
+        <button class="btn btn-primary" onclick="openModal('note')">+ Add note</button>
+      </div>
+      <ul class="note-list" id="note-list"></ul>
+      <div class="empty" id="note-empty" style="display:none;">
+        <div class="icon">📝</div>No notes yet. Paste in your existing records here.
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── MODALS ─────────────────────────────────────────── -->
+
+<!-- Crop modal -->
+<div class="modal-backdrop" id="modal-crop">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="crop-modal-title">Add Crop / Tree</h3>
+      <button class="modal-close" onclick="closeModal('crop')">×</button>
+    </div>
+    <div class="form-row">
+      <label>Name</label>
+      <input type="text" id="crop-name" placeholder="e.g. Tomatoes, Apple tree" />
+    </div>
+    <div class="form-row">
+      <label>Type</label>
+      <select id="crop-type">
+        <option value="crop">Crop / Vegetable</option>
+        <option value="orchard">Orchard / Perennial</option>
+      </select>
+    </div>
+    <div class="grid-2">
+      <div class="form-row">
+        <label>Planting / Grafting date</label>
+        <input type="date" id="crop-plant-date" />
+      </div>
+      <div class="form-row">
+        <label>Expected harvest</label>
+        <input type="date" id="crop-harvest-date" />
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Location / Bed</label>
+      <input type="text" id="crop-location" placeholder="e.g. Bed 3, North orchard" />
+    </div>
+    <div class="form-row">
+      <label>Variety</label>
+      <input type="text" id="crop-variety" placeholder="e.g. Cherokee Purple, Cox's Orange Pippin" />
+    </div>
+    <div class="form-row">
+      <label>Notes</label>
+      <textarea id="crop-notes" placeholder="Spacing, care notes, observations…"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('crop')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCrop()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Task modal -->
+<div class="modal-backdrop" id="modal-task">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="task-modal-title">Add Task</h3>
+      <button class="modal-close" onclick="closeModal('task')">×</button>
+    </div>
+    <div class="form-row">
+      <label>Task</label>
+      <input type="text" id="task-title" placeholder="e.g. Weed bed 3, Prune apple tree" />
+    </div>
+    <div class="grid-2">
+      <div class="form-row">
+        <label>Due date</label>
+        <input type="date" id="task-due" />
+      </div>
+      <div class="form-row">
+        <label>Status</label>
+        <select id="task-status">
+          <option value="todo">To Do</option>
+          <option value="doing">In Progress</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Category</label>
+      <select id="task-category">
+        <option value="crop">Crop</option>
+        <option value="orchard">Orchard</option>
+        <option value="general">General farm</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Priority</label>
+      <select id="task-priority">
+        <option value="normal">Normal</option>
+        <option value="high">High</option>
+        <option value="low">Low</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Notes</label>
+      <textarea id="task-notes" placeholder="Any details…"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('task')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTask()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Note modal -->
+<div class="modal-backdrop" id="modal-note">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Note</h3>
+      <button class="modal-close" onclick="closeModal('note')">×</button>
+    </div>
+    <div class="form-row">
+      <label>Title</label>
+      <input type="text" id="note-title-input" placeholder="e.g. Spring 2025 planting records" />
+    </div>
+    <div class="form-row">
+      <label>Date</label>
+      <input type="date" id="note-date-input" />
+    </div>
+    <div class="form-row">
+      <label>Category</label>
+      <select id="note-category">
+        <option value="general">General</option>
+        <option value="crop">Crop</option>
+        <option value="orchard">Orchard</option>
+        <option value="weather">Weather</option>
+        <option value="pest">Pest / Disease</option>
+        <option value="harvest">Harvest</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Content — paste your notes here</label>
+      <textarea id="note-body" style="min-height:140px;" placeholder="Paste existing records, observations, or write new notes…"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('note')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNote()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail modal (view/edit task or crop) -->
+<div class="modal-backdrop" id="modal-detail">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="detail-title"></h3>
+      <button class="modal-close" onclick="closeModal('detail')">×</button>
+    </div>
+    <div id="detail-body"></div>
+    <div class="modal-footer" id="detail-footer"></div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────
+// State & persistence
+// ─────────────────────────────────────────────────────────
+const STORAGE_KEY = 'fell-fields-v1';
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return { crops: [], tasks: [], notes: [] };
+}
+
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+let state = loadData();
+let editingId = null;
+let cropFilter = 'all';
+
+// ─────────────────────────────────────────────────────────
+// Utilities
+// ─────────────────────────────────────────────────────────
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function fmt(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const now = new Date(); now.setHours(0,0,0,0);
+  const d = new Date(dateStr + 'T12:00:00');
+  return Math.round((d - now) / 86400000);
+}
+
+function startOfWeek(d) {
+  const c = new Date(d); c.setHours(0,0,0,0);
+  const day = c.getDay(); // 0=Sun
+  c.setDate(c.getDate() - day);
+  return c;
+}
+
+function endOfWeek(d) {
+  const s = startOfWeek(d);
+  s.setDate(s.getDate() + 6);
+  return s;
+}
+
+const CROP_ICONS = {
+  crop: '🌿',
+  orchard: '🌳',
+};
+
+const CATEGORY_ICONS = {
+  crop: '🌿',
+  orchard: '🌳',
+  general: '🔧',
+  weather: '🌦',
+  pest: '🐛',
+  harvest: '🌾',
+};
+
+// ─────────────────────────────────────────────────────────
+// Navigation
+// ─────────────────────────────────────────────────────────
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  const btns = document.querySelectorAll('nav button');
+  const labels = ['dashboard','calendar','crops','tasks','notes','layout'];
+  btns[labels.indexOf(name)].classList.add('active');
+
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'calendar') renderCalendar();
+  if (name === 'crops') renderCrops();
+  if (name === 'tasks') renderTasks();
+  if (name === 'notes') renderNotes();
+  if (name === 'layout') renderLayout();
+}
+
+// ─────────────────────────────────────────────────────────
+// Dashboard
+// ─────────────────────────────────────────────────────────
+function renderDashboard() {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const h = now.getHours ? new Date().getHours() : 12;
+  const hr = new Date().getHours();
+  const greeting = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('dash-greeting').textContent = greeting;
+  document.getElementById('dash-date').textContent = new Date().toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+  const weekEnd = endOfWeek(now); weekEnd.setHours(23,59,59,999);
+  const next30 = new Date(now); next30.setDate(next30.getDate() + 30);
+
+  // Stats
+  const weekTasks = state.tasks.filter(t => t.status !== 'done' && t.due && new Date(t.due+'T12:00:00') >= now && new Date(t.due+'T12:00:00') <= weekEnd);
+  const overdueTasks = state.tasks.filter(t => t.status !== 'done' && t.due && daysUntil(t.due) < 0);
+  document.getElementById('stat-week-tasks').textContent = weekTasks.length;
+  document.getElementById('stat-crops').textContent = state.crops.length;
+  document.getElementById('stat-overdue').textContent = overdueTasks.length;
+
+  // This week items
+  const weekItems = [];
+  overdueTasks.forEach(t => weekItems.push({ type:'overdue', title: t.title, date:'Overdue: ' + fmt(t.due), cat: t.category }));
+  weekTasks.forEach(t => weekItems.push({ type:'task', title: t.title, date: 'Due: ' + fmt(t.due), cat: t.category }));
+  state.crops.forEach(c => {
+    if (c.plantDate && new Date(c.plantDate+'T12:00:00') >= now && new Date(c.plantDate+'T12:00:00') <= weekEnd) {
+      weekItems.push({ type: c.type, title: 'Plant: ' + c.name, date: fmt(c.plantDate) });
+    }
+    if (c.harvestDate && new Date(c.harvestDate+'T12:00:00') >= now && new Date(c.harvestDate+'T12:00:00') <= weekEnd) {
+      weekItems.push({ type: c.type, title: 'Harvest: ' + c.name, date: fmt(c.harvestDate) });
+    }
+  });
+
+  const weekEl = document.getElementById('dash-week');
+  const weekEmpty = document.getElementById('dash-week-empty');
+  weekEl.innerHTML = '';
+  if (weekItems.length === 0) { weekEmpty.style.display = ''; } else {
+    weekEmpty.style.display = 'none';
+    weekItems.forEach(item => {
+      const li = document.createElement('li');
+      li.className = 'week-item';
+      const dotClass = item.type === 'overdue' ? 'dot-overdue' : item.type === 'task' ? 'dot-task' : item.type === 'orchard' ? 'dot-orchard' : 'dot-crop';
+      li.innerHTML = `<span class="week-dot ${dotClass}"></span><div><div class="item-title">${esc(item.title)}</div><div class="item-date">${esc(item.date)}</div></div>`;
+      weekEl.appendChild(li);
+    });
+  }
+
+  // Upcoming 30 days
+  const upItems = [];
+  state.tasks.filter(t => t.status !== 'done' && t.due && new Date(t.due+'T12:00:00') > weekEnd && new Date(t.due+'T12:00:00') <= next30)
+    .forEach(t => upItems.push({ type:'task', title: t.title, date:'Due: '+fmt(t.due) }));
+  state.crops.forEach(c => {
+    if (c.plantDate) {
+      const d = new Date(c.plantDate+'T12:00:00');
+      if (d > weekEnd && d <= next30) upItems.push({ type:c.type, title:'Plant: '+c.name, date:fmt(c.plantDate) });
+    }
+    if (c.harvestDate) {
+      const d = new Date(c.harvestDate+'T12:00:00');
+      if (d > weekEnd && d <= next30) upItems.push({ type:c.type, title:'Harvest: '+c.name, date:fmt(c.harvestDate) });
+    }
+  });
+  upItems.sort((a,b) => a.date > b.date ? 1 : -1);
+
+  const upEl = document.getElementById('dash-upcoming');
+  const upEmpty = document.getElementById('dash-upcoming-empty');
+  upEl.innerHTML = '';
+  if (upItems.length === 0) { upEmpty.style.display = ''; } else {
+    upEmpty.style.display = 'none';
+    upItems.slice(0, 8).forEach(item => {
+      const li = document.createElement('li');
+      li.className = 'week-item';
+      const dotClass = item.type === 'task' ? 'dot-task' : item.type === 'orchard' ? 'dot-orchard' : 'dot-crop';
+      li.innerHTML = `<span class="week-dot ${dotClass}"></span><div><div class="item-title">${esc(item.title)}</div><div class="item-date">${esc(item.date)}</div></div>`;
+      upEl.appendChild(li);
+    });
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Calendar
+// ─────────────────────────────────────────────────────────
+let calDate = new Date();
+
+function calMonth(delta) { calDate.setMonth(calDate.getMonth() + delta); renderCalendar(); }
+function calToday() { calDate = new Date(); renderCalendar(); }
+
+function renderCalendar() {
+  const year = calDate.getFullYear();
+  const month = calDate.getMonth();
+  const titleEl = document.getElementById('cal-title');
+  titleEl.textContent = calDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+
+  // Day name headers
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach((d, i) => {
+    const el = document.createElement('div');
+    el.className = 'cal-day-name' + (i === 0 || i === 6 ? ' weekend-name' : '');
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const weekendOnly = document.getElementById('cal-weekend-only')?.checked;
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const prevDays = new Date(year, month, 0).getDate();
+  const todayStr = today();
+
+  // Build event map
+  const eventMap = {};
+  function addEvent(dateStr, event) {
+    if (!eventMap[dateStr]) eventMap[dateStr] = [];
+    eventMap[dateStr].push(event);
+  }
+  state.crops.forEach(c => {
+    if (c.plantDate) addEvent(c.plantDate, { label: '🌱 '+c.name, cls: c.type });
+    if (c.harvestDate) addEvent(c.harvestDate, { label: '🌾 '+c.name, cls: c.type });
+  });
+  state.tasks.filter(t => t.due && t.status !== 'done').forEach(t => {
+    const dow = new Date(t.due+'T12:00:00').getDay();
+    if (weekendOnly && dow !== 0 && dow !== 6) return;
+    addEvent(t.due, { label: '📋 '+t.title, cls: 'task', taskId: t.id });
+  });
+
+  let cells = firstDay;
+  // Prev month overflow
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const d = prevDays - i;
+    const cell = makeCalCell(new Date(year, month-1, d).toISOString().slice(0,10), d, true, eventMap);
+    grid.appendChild(cell);
+  }
+  // Current month
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cell = makeCalCell(dateStr, d, false, eventMap);
+    if (dateStr === todayStr) cell.classList.add('today');
+    grid.appendChild(cell);
+    cells++;
+  }
+  // Next month fill
+  const remaining = 42 - (firstDay + daysInMonth);
+  for (let d = 1; d <= remaining; d++) {
+    const cell = makeCalCell(new Date(year, month+1, d).toISOString().slice(0,10), d, true, eventMap);
+    grid.appendChild(cell);
+  }
+}
+
+function makeCalCell(dateStr, dayNum, otherMonth, eventMap) {
+  const dow = new Date(dateStr + 'T12:00:00').getDay();
+  const isWeekend = dow === 0 || dow === 6;
+  const cell = document.createElement('div');
+  cell.className = 'cal-cell' + (otherMonth ? ' other-month' : '') + (isWeekend ? ' weekend' : '');
+  const num = document.createElement('div');
+  num.className = 'day-num'; num.textContent = dayNum;
+  cell.appendChild(num);
+  const events = eventMap[dateStr] || [];
+  events.slice(0, 3).forEach(ev => {
+    const el = document.createElement('div');
+    el.className = 'cal-event ' + ev.cls;
+    el.textContent = ev.label;
+    if (ev.taskId) {
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', e => { e.stopPropagation(); openTaskDetail(ev.taskId); });
+    }
+    cell.appendChild(el);
+  });
+  if (events.length > 3) {
+    const more = document.createElement('div');
+    more.className = 'cal-event'; more.style.cssText = 'color:var(--text-muted);background:none;';
+    more.textContent = '+' + (events.length - 3) + ' more';
+    cell.appendChild(more);
+  }
+  return cell;
+}
+
+// ─────────────────────────────────────────────────────────
+// Crops
+// ─────────────────────────────────────────────────────────
+function setCropFilter(f) {
+  cropFilter = f;
+  ['all','crop','orchard'].forEach(x => {
+    document.getElementById('crop-filter-'+x).style.background = x === f ? 'var(--accent)' : '';
+    document.getElementById('crop-filter-'+x).style.color = x === f ? 'white' : '';
+    document.getElementById('crop-filter-'+x).style.border = x === f ? 'none' : '';
+  });
+  renderCrops();
+}
+
+function renderCrops() {
+  const list = document.getElementById('crop-list');
+  const empty = document.getElementById('crop-empty');
+  list.innerHTML = '';
+  const items = state.crops.filter(c => cropFilter === 'all' || c.type === cropFilter);
+  if (items.length === 0) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  items.forEach(c => {
+    const li = document.createElement('li');
+    li.className = 'crop-item';
+    const du = c.harvestDate ? daysUntil(c.harvestDate) : null;
+    const harvestInfo = du !== null ? (du < 0 ? '<span class="tag tag-overdue">Overdue harvest</span>' : du === 0 ? '<span class="tag tag-crop">Harvest today!</span>' : `<span class="tag ${c.type==='orchard'?'tag-orchard':'tag-crop'}">Harvest in ${du}d</span>`) : '';
+    li.innerHTML = `
+      <div class="crop-icon">${CROP_ICONS[c.type] || '🌿'}</div>
+      <div class="crop-info">
+        <div class="crop-name">${esc(c.name)} ${harvestInfo}</div>
+        <div class="crop-meta">
+          <span class="tag ${c.type === 'orchard' ? 'tag-orchard' : 'tag-crop'}">${c.type === 'orchard' ? 'Orchard' : 'Crop'}</span>
+          ${c.variety ? ' · ' + esc(c.variety) : ''}
+          ${c.location ? ' · 📍 ' + esc(c.location) : ''}
+          ${c.plantDate ? ' · Planted: ' + fmt(c.plantDate) : ''}
+          ${c.harvestDate ? ' · Harvest: ' + fmt(c.harvestDate) : ''}
+        </div>
+        ${c.notes ? `<div class="crop-notes">${esc(c.notes)}</div>` : ''}
+      </div>
+      <div class="crop-actions">
+        <button class="btn btn-secondary btn-sm" onclick="editCrop('${c.id}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCrop('${c.id}')">Delete</button>
+      </div>`;
+    list.appendChild(li);
+  });
+}
+
+function editCrop(id) {
+  const c = state.crops.find(x => x.id === id);
+  if (!c) return;
+  editingId = id;
+  document.getElementById('crop-modal-title').textContent = 'Edit Crop / Tree';
+  document.getElementById('crop-name').value = c.name || '';
+  document.getElementById('crop-type').value = c.type || 'crop';
+  document.getElementById('crop-plant-date').value = c.plantDate || '';
+  document.getElementById('crop-harvest-date').value = c.harvestDate || '';
+  document.getElementById('crop-location').value = c.location || '';
+  document.getElementById('crop-variety').value = c.variety || '';
+  document.getElementById('crop-notes').value = c.notes || '';
+  openModal('crop');
+}
+
+function deleteCrop(id) {
+  if (!confirm('Delete this crop / tree?')) return;
+  state.crops = state.crops.filter(c => c.id !== id);
+  saveData();
+  renderCrops();
+  renderDashboard();
+}
+
+function saveCrop() {
+  const name = document.getElementById('crop-name').value.trim();
+  if (!name) { alert('Please enter a crop name.'); return; }
+  const crop = {
+    id: editingId || uid(),
+    name,
+    type: document.getElementById('crop-type').value,
+    plantDate: document.getElementById('crop-plant-date').value,
+    harvestDate: document.getElementById('crop-harvest-date').value,
+    location: document.getElementById('crop-location').value.trim(),
+    variety: document.getElementById('crop-variety').value.trim(),
+    notes: document.getElementById('crop-notes').value.trim(),
+  };
+  if (editingId) {
+    const idx = state.crops.findIndex(c => c.id === editingId);
+    if (idx !== -1) state.crops[idx] = crop;
+  } else {
+    state.crops.push(crop);
+  }
+  saveData();
+  closeModal('crop');
+  renderCrops();
+  renderDashboard();
+}
+
+// ─────────────────────────────────────────────────────────
+// Tasks
+// ─────────────────────────────────────────────────────────
+function renderTasks() {
+  const cols = { todo: [], doing: [], done: [] };
+  state.tasks.forEach(t => { if (cols[t.status]) cols[t.status].push(t); });
+
+  ['todo','doing','done'].forEach(s => {
+    const el = document.getElementById('col-' + s);
+    const cnt = document.getElementById('cnt-' + s);
+    el.innerHTML = '';
+    cnt.textContent = cols[s].length ? `(${cols[s].length})` : '';
+    if (cols[s].length === 0) {
+      el.innerHTML = '<div class="empty" style="padding:20px;font-size:13px;">No tasks here</div>';
+      return;
+    }
+    cols[s].sort((a,b) => (a.due||'zzz') > (b.due||'zzz') ? 1 : -1).forEach(t => {
+      const card = document.createElement('div');
+      const du = t.due ? daysUntil(t.due) : null;
+      const isOverdue = du !== null && du < 0 && t.status !== 'done';
+      const isSoon = du !== null && du <= 3 && du >= 0 && t.status !== 'done';
+      card.className = 'task-card' + (isOverdue ? ' overdue' : isSoon ? ' due-soon' : '');
+      card.onclick = () => openTaskDetail(t.id);
+      card.innerHTML = `
+        <div class="t-title">${esc(t.title)}</div>
+        <div class="t-meta">
+          ${t.due ? `<span>${isOverdue ? '⚠️ Overdue:' : '📅'} ${fmt(t.due)}</span>` : ''}
+          ${t.category ? `<span>${CATEGORY_ICONS[t.category] || ''} ${t.category}</span>` : ''}
+          ${t.priority === 'high' ? '<span style="color:var(--warn)">● High priority</span>' : ''}
+        </div>`;
+      el.appendChild(card);
+    });
+  });
+}
+
+function openTaskDetail(id) {
+  const t = state.tasks.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('detail-title').textContent = t.title;
+  const du = t.due ? daysUntil(t.due) : null;
+  const overdueText = du !== null && du < 0 && t.status !== 'done' ? `<span class="tag tag-overdue">Overdue by ${Math.abs(du)} day(s)</span>` : '';
+  document.getElementById('detail-body').innerHTML = `
+    <div class="stack">
+      ${overdueText}
+      <div class="form-row"><label>Status</label>
+        <select onchange="updateTaskField('${id}','status',this.value)">
+          <option value="todo" ${t.status==='todo'?'selected':''}>To Do</option>
+          <option value="doing" ${t.status==='doing'?'selected':''}>In Progress</option>
+          <option value="done" ${t.status==='done'?'selected':''}>Done</option>
+        </select>
+      </div>
+      ${t.due ? `<div><strong>Due:</strong> ${fmt(t.due)}</div>` : ''}
+      ${t.category ? `<div><strong>Category:</strong> ${t.category}</div>` : ''}
+      ${t.priority ? `<div><strong>Priority:</strong> ${t.priority}</div>` : ''}
+      ${t.notes ? `<div><strong>Notes:</strong><br><span style="color:var(--text-muted);font-size:14px;white-space:pre-wrap;">${esc(t.notes)}</span></div>` : ''}
+    </div>`;
+  document.getElementById('detail-footer').innerHTML = `
+    <button class="btn btn-secondary btn-sm" onclick="editTask('${id}');closeModal('detail')">Edit</button>
+    <button class="btn btn-danger btn-sm" onclick="deleteTask('${id}')">Delete</button>
+    <button class="btn btn-primary btn-sm" onclick="closeModal('detail')">Close</button>`;
+  openModal('detail');
+}
+
+function updateTaskField(id, field, value) {
+  const t = state.tasks.find(x => x.id === id);
+  if (t) { t[field] = value; saveData(); renderTasks(); }
+}
+
+function editTask(id) {
+  const t = state.tasks.find(x => x.id === id);
+  if (!t) return;
+  editingId = id;
+  document.getElementById('task-modal-title').textContent = 'Edit Task';
+  document.getElementById('task-title').value = t.title || '';
+  document.getElementById('task-due').value = t.due || '';
+  document.getElementById('task-status').value = t.status || 'todo';
+  document.getElementById('task-category').value = t.category || 'general';
+  document.getElementById('task-priority').value = t.priority || 'normal';
+  document.getElementById('task-notes').value = t.notes || '';
+  openModal('task');
+}
+
+function deleteTask(id) {
+  if (!confirm('Delete this task?')) return;
+  state.tasks = state.tasks.filter(t => t.id !== id);
+  saveData();
+  closeModal('detail');
+  renderTasks();
+  renderDashboard();
+}
+
+function saveTask() {
+  const title = document.getElementById('task-title').value.trim();
+  if (!title) { alert('Please enter a task title.'); return; }
+  const task = {
+    id: editingId || uid(),
+    title,
+    due: document.getElementById('task-due').value,
+    status: document.getElementById('task-status').value,
+    category: document.getElementById('task-category').value,
+    priority: document.getElementById('task-priority').value,
+    notes: document.getElementById('task-notes').value.trim(),
+  };
+  if (editingId) {
+    const idx = state.tasks.findIndex(t => t.id === editingId);
+    if (idx !== -1) state.tasks[idx] = task;
+  } else {
+    state.tasks.push(task);
+  }
+  saveData();
+  closeModal('task');
+  renderTasks();
+  renderDashboard();
+}
+
+// ─────────────────────────────────────────────────────────
+// Notes
+// ─────────────────────────────────────────────────────────
+function renderNotes() {
+  const list = document.getElementById('note-list');
+  const empty = document.getElementById('note-empty');
+  list.innerHTML = '';
+  const sorted = [...state.notes].sort((a,b) => b.date > a.date ? 1 : -1);
+  if (sorted.length === 0) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  sorted.forEach(n => {
+    const li = document.createElement('li');
+    li.className = 'note-item';
+    li.innerHTML = `
+      <div class="note-header">
+        <div>
+          <span class="note-title">${esc(n.title)}</span>
+          ${n.category ? ` <span class="tag tag-task" style="font-size:11px;">${esc(n.category)}</span>` : ''}
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span class="note-date">${n.date ? fmt(n.date) : ''}</span>
+          <button class="btn btn-danger btn-sm" onclick="deleteNote('${n.id}')">Delete</button>
+        </div>
+      </div>
+      <div class="note-body">${esc(n.body)}</div>`;
+    list.appendChild(li);
+  });
+}
+
+function deleteNote(id) {
+  if (!confirm('Delete this note?')) return;
+  state.notes = state.notes.filter(n => n.id !== id);
+  saveData();
+  renderNotes();
+}
+
+function saveNote() {
+  const title = document.getElementById('note-title-input').value.trim();
+  const body = document.getElementById('note-body').value.trim();
+  if (!title && !body) { alert('Please enter a title or content.'); return; }
+  state.notes.push({
+    id: uid(),
+    title: title || 'Untitled note',
+    date: document.getElementById('note-date-input').value || today(),
+    category: document.getElementById('note-category').value,
+    body,
+  });
+  saveData();
+  closeModal('note');
+  renderNotes();
+}
+
+// ─────────────────────────────────────────────────────────
+// Modals
+// ─────────────────────────────────────────────────────────
+function openModal(name) {
+  document.getElementById('modal-' + name).classList.add('open');
+  if (name !== 'detail') {
+    // Reset form if not editing
+    if (!editingId) {
+      if (name === 'crop') {
+        document.getElementById('crop-modal-title').textContent = 'Add Crop / Tree';
+        ['crop-name','crop-plant-date','crop-harvest-date','crop-location','crop-variety','crop-notes'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('crop-type').value = 'crop';
+      }
+      if (name === 'task') {
+        document.getElementById('task-modal-title').textContent = 'Add Task';
+        ['task-title','task-due','task-notes'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('task-status').value = 'todo';
+        document.getElementById('task-category').value = 'crop';
+        document.getElementById('task-priority').value = 'normal';
+      }
+      if (name === 'note') {
+        document.getElementById('note-title-input').value = '';
+        document.getElementById('note-date-input').value = today();
+        document.getElementById('note-body').value = '';
+        document.getElementById('note-category').value = 'general';
+      }
+    }
+  }
+}
+
+function closeModal(name) {
+  document.getElementById('modal-' + name).classList.remove('open');
+  editingId = null;
+}
+
+// Close modal on backdrop click
+document.querySelectorAll('.modal-backdrop').forEach(bd => {
+  bd.addEventListener('click', e => { if (e.target === bd) closeModal(bd.id.replace('modal-','')) });
+});
+
+// Close on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.modal-backdrop.open').forEach(bd => bd.classList.remove('open'));
+});
+
+// ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// Layout helpers
+// ─────────────────────────────────────────────────────────
+function applyLocations() {
+  // Bump this version whenever the default layout changes — forces a re-migration
+  // of existing localStorage data while preserving future drag-and-drop moves.
+  const LAYOUT_VERSION = 2;
+  const forceApply = (state.layoutVersion || 0) < LAYOUT_VERSION;
+
+  const locationMap = {
+    // ── BLOCK 1 (less sun) ────────────────────────────────
+    // R1: All cabbages together (user preference)
+    'Caraflex Cabbage':            'Block 1, Row 1',
+    'Primero Cabbage':             'Block 1, Row 1',
+    'Typhoon Cabbage':             'Block 1, Row 1',
+    'Deadon Cabbage':              'Block 1, Row 1',
+    // R2: Broccoli + Cauliflower (brassica family group)
+    'Belstar Broccoli':            'Block 1, Row 2',
+    'Skywalker Cauliflower':       'Block 1, Row 2',
+    'Veronica Cauliflower':        'Block 1, Row 2',
+    // R3: Kale
+    'Dazzling Blue Kale':          'Block 1, Row 3',
+    // R4: All alliums — near brassicas (R1-3); alliums deter cabbage white butterfly & aphids
+    'Parade Onion':                'Block 1, Row 4',
+    'Red Carpet Onion':            'Block 1, Row 4',
+    'Matador Shallot':             'Block 1, Row 4',
+    // R5-6: Squash (space-hungry; away from brassicas which squash can crowd)
+    'Cha-Cha Kabocha Squash':      'Block 1, Row 5',
+    'Tetra Squash':                'Block 1, Row 5',
+    'Koginut Squash':              'Block 1, Row 5',
+    'Sunshine Kabocha Squash':     'Block 1, Row 6',
+    'Winter Blush Squash':         'Block 1, Row 6',
+    'Lodi Squash':                 'Block 1, Row 6',
+    'Honeypatch Squash':           'Block 1, Row 6',
+    // R7: Potatoes — now separated from tomatoes (Block 2); prevents shared blight
+    'Magic Molly Potato':          'Block 1, Row 7',
+    // R8: Peas → Radicchio (peas fix nitrogen; radicchio benefits from the boost)
+    'Sugar Snap Pea':              'Block 1, Row 8',
+    'Botteniga Radicchio':         'Block 1, Row 8 (succession after peas)',
+    'Sangria Radicchio':           'Block 1, Row 8 (succession after peas)',
+    'Regina Rossa Radicchio':      'Block 1, Row 8 (succession after peas)',
+
+    // ── BLOCK 2 (more sun) ───────────────────────────────
+    // R1: Cucumbers (warm-season; companion to beans in R4)
+    'Lemon Cucumber':              'Block 2, Row 1',
+    'Cool Customer Cucumber':      'Block 2, Row 1',
+    'Marketmore 76 Cucumber':      'Block 2, Row 1',
+    // R2: Tomatoes — full sun (user preference)
+    'Clementine Tomato':           'Block 2, Row 2',
+    'Midnight Roma Tomato':        'Block 2, Row 2',
+    // R3: Tomatoes cont. + Peppers + Husk Cherry (all nightshades; full sun; similar care)
+    'Sweet Prince Tomato':         'Block 2, Row 3',
+    'Red Ember Cayenne Pepper':    'Block 2, Row 3',
+    'Shishito Pepper':             'Block 2, Row 3',
+    'Early Jalapeño Pepper':       'Block 2, Row 3',
+    'Goldie Husk Cherry':          'Block 2, Row 3',
+    // R4: Beans (nitrogen-fixing; companion to cucumbers in R1; keep away from alliums in B1)
+    'Trilogy Mix Bean':            'Block 2, Row 4',
+    // R5: Dahlias + Sunflowers (moved to sunny block; full sun needed; pollinators for tomatoes & cucumbers)
+    'Cancan Girls Dahlia':         'Block 2, Row 5',
+    "Bee's Choice Dahlia":         'Block 2, Row 5',
+    'Mexican Sunflower':           'Block 2, Row 5',
+    'Daydream Mixture Sunflower':  'Block 2, Row 5',
+    // R6: Arugula + Radishes → Radicchio (quick spring crops free up for fall radicchio)
+    'Astro Arugula':               'Block 2, Row 6',
+    'Pink Beauty Radish':          'Block 2, Row 6',
+    'French Breakfast Radish':     'Block 2, Row 6',
+    'Mirabella Radicchio':         'Block 2, Row 6 (succession after arugula/radishes)',
+    'Beatrice Radicchio':          'Block 2, Row 6 (succession after arugula/radishes)',
+    // R7: Lettuce → Radicchio
+    'Newham Lettuce':              'Block 2, Row 7',
+    'Rosaine Lettuce':             'Block 2, Row 7',
+    'Kolibri Lettuce':             'Block 2, Row 7',
+    'Sorgente Radicchio':          'Block 2, Row 7 (succession after lettuce)',
+    'Pasqualino Radicchio':        'Block 2, Row 7 (succession after lettuce)',
+    // R8: Beets → Radicchio
+    'Merlin Beet':                 'Block 2, Row 8',
+    'Chioggia Guardsmark Beet':    'Block 2, Row 8',
+    'Formanova Beet':              'Block 2, Row 8',
+    'Vesuvio Radicchio':           'Block 2, Row 8 (succession after beets)',
+    // R9: Carrots (good companion to beets in R8; both roots, minimal above-ground competition)
+    'Yaya Carrot':                 'Block 2, Row 9',
+    // R10: Small flowers (border row; pollinators & pest confusion for whole block)
+    'Sweet Alyssum':               'Block 2, Row 10',
+    'Champagne Bubbles Pink Iceland Poppy': 'Block 2, Row 10',
+    'Tower Chamois China Aster':   'Block 2, Row 10',
+    'Cupcakes White Cosmos':       'Block 2, Row 10',
+    'Purple Kisses Daucus':        'Block 2, Row 10',
+    'Vintage Rose Celosia':        'Block 2, Row 10',
+    'Limonata Celosia':            'Block 2, Row 10',
+    'Dusty Rose Celosia':          'Block 2, Row 10',
+    'Little Flower Girl Zinnia':   'Block 2, Row 10',
+    'Victorian Wedding Zinnia':    'Block 2, Row 10',
+  };
+
+  state.crops.forEach(c => {
+    if (locationMap[c.name] && (forceApply || !c.location)) {
+      c.location = locationMap[c.name];
+    }
+  });
+
+  if (forceApply) {
+    state.layoutVersion = LAYOUT_VERSION;
+    saveData();
+  }
+}
+
+// Returns { inRow, betweenRow } spacing in inches for a no-dig 30" wide bed.
+// inRow = spacing along the row length; betweenRow = spacing across the 30" width.
+// rowsAcross = floor(30 / betweenRow); total plants = rowsAcross × floor(rowLen / inRow)
+function cropSpacing(name) {
+  const n = name.toLowerCase();
+  //                                         inRow  betweenRow  rows across 30"
+  if (/tomato/.test(n))           return { inRow: 24, betweenRow: 24 }; // 1 row
+  if (/pepper|husk cherry/.test(n)) return { inRow: 18, betweenRow: 18 }; // 1 row
+  if (/broccoli/.test(n))         return { inRow: 15, betweenRow: 15 }; // 2 rows
+  if (/cabbage/.test(n))          return { inRow: 15, betweenRow: 15 }; // 2 rows
+  if (/cauliflower/.test(n))      return { inRow: 15, betweenRow: 15 }; // 2 rows
+  if (/kale/.test(n))             return { inRow: 15, betweenRow: 15 }; // 2 rows
+  if (/lettuce/.test(n))          return { inRow: 10, betweenRow: 10 }; // 3 rows
+  if (/cucumber/.test(n))         return { inRow: 12, betweenRow: 15 }; // 2 rows (often trellised)
+  if (/squash/.test(n))           return { inRow: 36, betweenRow: 30 }; // 1 row; vines sprawl beyond bed
+  if (/onion/.test(n))            return { inRow:  4, betweenRow:  7 }; // 4 rows across 30"
+  if (/shallot/.test(n))          return { inRow:  4, betweenRow:  7 }; // 4 rows across 30"
+  if (/bean/.test(n))             return { inRow:  6, betweenRow:  6 }; // 5 rows
+  if (/pea/.test(n))              return { inRow:  4, betweenRow:  6 }; // 5 rows
+  if (/beet/.test(n))             return { inRow:  4, betweenRow:  6 }; // 5 rows
+  if (/carrot/.test(n))           return { inRow:  3, betweenRow:  3 }; // 10 rows
+  if (/radish/.test(n))           return { inRow:  3, betweenRow:  3 }; // 10 rows
+  if (/arugula/.test(n))          return { inRow:  6, betweenRow:  6 }; // 5 rows
+  if (/potato/.test(n))           return { inRow: 12, betweenRow: 15 }; // 2 rows
+  if (/radicchio/.test(n))        return { inRow: 12, betweenRow: 12 }; // 2 rows
+  if (/dahlia/.test(n))           return { inRow: 18, betweenRow: 18 }; // 1 row
+  if (/zinnia/.test(n))           return { inRow: 12, betweenRow: 12 }; // 2 rows
+  if (/celosia/.test(n))          return { inRow: 12, betweenRow: 12 }; // 2 rows
+  if (/sunflower/.test(n))        return { inRow: 18, betweenRow: 18 }; // 1 row
+  if (/alyssum/.test(n))          return { inRow:  9, betweenRow:  9 }; // 3 rows
+  if (/cosmos/.test(n))           return { inRow: 12, betweenRow: 12 }; // 2 rows
+  if (/aster/.test(n))            return { inRow: 12, betweenRow: 12 }; // 2 rows
+  if (/daucus/.test(n))           return { inRow: 12, betweenRow: 12 }; // 2 rows
+  if (/poppy/.test(n))            return { inRow:  9, betweenRow:  9 }; // 3 rows
+  return { inRow: 12, betweenRow: 12 };
+}
+
+function cropSource(notes) {
+  if (!notes) return '';
+  const m = notes.match(/^(Johnny's|Row 7|Uprising|Floret)/);
+  return m ? m[1] : '';
+}
+
+function shortFmt(dateStr) {
+  if (!dateStr) return '';
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// Layout view
+// ─────────────────────────────────────────────────────────
+function renderLayout() {
+  applyLocations(); // ensure location fields are set regardless of how/when data was loaded
+
+  // Classify crops into display families
+  function getFamily(crop) {
+    const n = (crop.name + ' ' + crop.variety).toLowerCase();
+    if (/tomato|pepper|husk cherry/.test(n)) return 'nightshade';
+    if (/squash|cucumber/.test(n)) return 'cucurbit';
+    if (/broccoli|cabbage|cauliflower|kale/.test(n)) return 'brassica';
+    if (/beet|carrot|radish|arugula/.test(n)) return 'root';
+    if (/onion|shallot/.test(n)) return 'allium';
+    if (/pea|bean/.test(n)) return 'legume';
+    if (/potato/.test(n)) return 'potato';
+    if (/radicchio/.test(n)) return 'radicchio';
+    return 'flower';
+  }
+
+  const FAM_LABEL = {
+    nightshade: 'Nightshades', cucurbit: 'Cucurbits', brassica: 'Brassicas',
+    root: 'Roots', allium: 'Alliums', legume: 'Legumes',
+    potato: 'Potatoes', radicchio: 'Radicchio', flower: 'Flowers'
+  };
+  const FAM_COLOR = {
+    nightshade: 'fam-nightshade', cucurbit: 'fam-cucurbit', brassica: 'fam-brassica',
+    root: 'fam-root', allium: 'fam-allium', legume: 'fam-legume',
+    potato: 'fam-potato', radicchio: 'fam-radicchio', flower: 'fam-flower'
+  };
+  const FAM_DOT = {
+    nightshade:'#fde8e8', cucurbit:'#fef3c7', brassica:'#d1fae5', root:'#ede9fe',
+    allium:'#fce7f3', legume:'#dbeafe', potato:'#f3f4f6', radicchio:'#fee2e2', flower:'#fdf4ff'
+  };
+
+  // Build block → row → [crops] map from location field
+  const blocks = { 'Block 1': {}, 'Block 2': {} };
+  state.crops.forEach(c => {
+    if (!c.location) return;
+    const m = c.location.match(/^(Block [12]),\s*Row (\d+)/i);
+    if (!m) return;
+    const blk = m[1], row = parseInt(m[2]);
+    if (!blocks[blk][row]) blocks[blk][row] = [];
+    // is this a succession crop?
+    const isSuc = /succession/.test(c.location);
+    blocks[blk][row].push({ crop: c, succession: isSuc, fam: getFamily(c) });
+  });
+
+  const BLOCK_DIMS   = { 'Block 1': '10 rows · ~22 ft · 30" wide', 'Block 2': '10 rows · ~13 ft · 30" wide' };
+  const BLOCK_LEN_IN = { 'Block 1': 264, 'Block 2': 156 };
+
+  const container = document.getElementById('layout-blocks');
+  container.innerHTML = '';
+
+  ['Block 1','Block 2'].forEach(blk => {
+    const rowData = blocks[blk];
+    const wrap = document.createElement('div');
+    wrap.className = 'layout-block';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'layout-block-header';
+    hdr.innerHTML = `<span>${blk}</span><span class="block-dim">${BLOCK_DIMS[blk]}</span>`;
+    wrap.appendChild(hdr);
+
+    for (let r = 1; r <= 10; r++) {
+      const entries = rowData[r] || [];
+      const row = document.createElement('div');
+      row.className = 'layout-row';
+
+      const num = document.createElement('div');
+      num.className = 'layout-row-num';
+      num.textContent = 'R' + r;
+      row.appendChild(num);
+
+      const body = document.createElement('div');
+      body.className = 'layout-row-body';
+      body.addEventListener('dragover', ev => { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; body.classList.add('drag-over'); });
+      body.addEventListener('dragleave', ev => { if (!body.contains(ev.relatedTarget)) body.classList.remove('drag-over'); });
+      body.addEventListener('drop', ev => {
+        ev.preventDefault();
+        body.classList.remove('drag-over');
+        const id = ev.dataTransfer.getData('text/plain');
+        const crop = state.crops.find(c => c.id === id);
+        if (!crop) return;
+        crop.location = `${blk}, Row ${r}`;
+        saveData();
+        renderLayout();
+      });
+
+      if (entries.length === 0) {
+        body.innerHTML = `<span style="color:var(--text-muted);font-size:12px;font-style:italic;">— unassigned —</span>`;
+      } else {
+        const primary = entries.filter(e => !e.succession);
+        const succs   = entries.filter(e => e.succession);
+
+        function makeChip(e, rowLenIn) {
+          const sp         = cropSpacing(e.crop.name);
+          const rowsAcross = Math.max(1, Math.floor(30 / sp.betweenRow));
+          const count      = rowsAcross * Math.max(1, Math.floor(rowLenIn / sp.inRow));
+          const chip    = document.createElement('div');
+          chip.className = `layout-chip ${FAM_COLOR[e.fam]}`;
+          chip.draggable = true;
+          chip.dataset.cropId = e.crop.id;
+          chip.addEventListener('dragstart', ev => {
+            ev.dataTransfer.setData('text/plain', e.crop.id);
+            ev.dataTransfer.effectAllowed = 'move';
+            setTimeout(() => chip.classList.add('dragging'), 0);
+          });
+          chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+          chip.addEventListener('click', () => openCropLayoutDetail(e.crop.id));
+
+          let label = e.crop.name
+            .replace(/ Tomato$| Pepper$| Cucumber$| Squash$| Cabbage$| Cauliflower$| Broccoli$| Kale$| Lettuce$| Onion$| Shallot$| Beet$| Carrot$| Radish$| Arugula$| Potato$| Bean$| Pea$| Radicchio$| Dahlia$| Celosia$| Zinnia$| Sunflower$/i, '')
+            .replace(/Kabocha /i, '').replace(/Cayenne /i, '')
+            .replace(/Husk Cherry/i, 'Husk Ch.').trim();
+
+          const nameEl = document.createElement('div');
+          nameEl.className = 'layout-chip-name';
+          nameEl.textContent = label;
+
+          const metaEl = document.createElement('div');
+          metaEl.className = 'layout-chip-meta';
+          metaEl.textContent = `${sp.inRow}" × ${rowsAcross} rows · ~${count} plants`;
+
+          chip.appendChild(nameEl);
+          chip.appendChild(metaEl);
+
+          if (e.crop.plantDate || e.crop.harvestDate) {
+            const datesEl = document.createElement('div');
+            datesEl.className = 'layout-chip-dates';
+            const s = shortFmt(e.crop.plantDate), d = shortFmt(e.crop.harvestDate);
+            datesEl.textContent = s && d ? `${s} → ${d}` : s || d;
+            chip.appendChild(datesEl);
+          }
+          return chip;
+        }
+
+        const rowLenIn = BLOCK_LEN_IN[blk];
+        const primaryLenEach = Math.round(rowLenIn / (primary.length || 1));
+        primary.forEach(e => body.appendChild(makeChip(e, primaryLenEach)));
+
+        if (succs.length > 0) {
+          const arrow = document.createElement('div');
+          arrow.className = 'layout-arrow';
+          arrow.textContent = '→ ' + (shortFmt(succs[0].crop.plantDate) || 'Jul 15');
+          body.appendChild(arrow);
+          succs.forEach(e => body.appendChild(makeChip(e, rowLenIn)));
+        }
+
+        // Row note (e.g. "with trellis") — skip half/succession labels
+        const noteMatch = (entries[0].crop.location || '').match(/\((.*?)\)/);
+        if (noteMatch && !/succession|half/i.test(noteMatch[1])) {
+          const note = document.createElement('div');
+          note.className = 'layout-row-note';
+          note.textContent = noteMatch[1];
+          body.appendChild(note);
+        }
+
+        // Season timeline — show for any row that has crops with dates
+        const datedEntries = entries.filter(e => e.crop.plantDate && e.crop.harvestDate);
+        if (datedEntries.length > 0) {
+          const S0   = new Date('2026-04-01T00:00:00');
+          const SEND = new Date('2026-11-30T00:00:00');
+          const SDAYS = (SEND - S0) / 86400000; // 243
+
+          const tl = document.createElement('div');
+          tl.className = 'layout-timeline';
+
+          // Month tick marks
+          const tickRow = document.createElement('div');
+          tickRow.className = 'layout-timeline-months';
+          [['Apr',0],['May',30],['Jun',61],['Jul',91],['Aug',122],['Sep',153],['Oct',184],['Nov',214]].forEach(([label, day]) => {
+            const t = document.createElement('span');
+            t.textContent = label;
+            t.style.left = (day / SDAYS * 100).toFixed(1) + '%';
+            tickRow.appendChild(t);
+          });
+          tl.appendChild(tickRow);
+
+          // Track with crop segments
+          const track = document.createElement('div');
+          track.className = 'layout-timeline-track';
+          datedEntries.forEach(e => {
+            const startDay = Math.max(0, (new Date(e.crop.plantDate+'T00:00:00') - S0) / 86400000);
+            const endDay   = Math.min(SDAYS, (new Date(e.crop.harvestDate+'T00:00:00') - S0) / 86400000);
+            if (endDay <= startDay) return;
+            const left  = (startDay / SDAYS * 100).toFixed(2);
+            const width = ((endDay - startDay) / SDAYS * 100).toFixed(2);
+            const seg = document.createElement('div');
+            seg.className = 'layout-timeline-seg';
+            seg.style.left  = left + '%';
+            seg.style.width = width + '%';
+            seg.style.background = FAM_DOT[e.fam];
+            seg.title = `${e.crop.name}: ${shortFmt(e.crop.plantDate)} → ${shortFmt(e.crop.harvestDate)}`;
+            let lbl = e.crop.name
+              .replace(/ Radicchio$| Tomato$| Pepper$| Cucumber$| Squash$| Cabbage$| Cauliflower$| Broccoli$| Kale$| Lettuce$| Onion$| Shallot$| Beet$| Carrot$| Radish$| Arugula$| Potato$| Bean$| Pea$| Dahlia$| Celosia$| Zinnia$| Sunflower$/i, '')
+              .replace(/Kabocha /i,'').replace(/Cayenne /i,'').trim();
+            seg.textContent = lbl;
+            track.appendChild(seg);
+          });
+          tl.appendChild(track);
+          body.appendChild(tl);
+        }
+      }
+
+      row.appendChild(body);
+      wrap.appendChild(row);
+    }
+    container.appendChild(wrap);
+  });
+
+  // Legend
+  const legend = document.getElementById('layout-legend');
+  legend.innerHTML = '';
+  const families = ['nightshade','cucurbit','brassica','root','allium','legume','potato','radicchio','flower'];
+  families.forEach(f => {
+    const item = document.createElement('div');
+    item.className = 'layout-legend-item';
+    item.innerHTML = `<span class="layout-legend-dot" style="background:${FAM_DOT[f]};border:1px solid rgba(0,0,0,0.1);"></span><span>${FAM_LABEL[f]}</span>`;
+    legend.appendChild(item);
+  });
+}
+
+function openCropLayoutDetail(id) {
+  const c = state.crops.find(x => x.id === id);
+  if (!c) return;
+
+  const sp         = cropSpacing(c.name);
+  const rowsAcross = Math.max(1, Math.floor(30 / sp.betweenRow));
+  const source     = cropSource(c.notes);
+  const dtm     = c.plantDate && c.harvestDate
+    ? Math.round((new Date(c.harvestDate+'T12:00:00') - new Date(c.plantDate+'T12:00:00')) / 86400000)
+    : null;
+
+  const startMatch = (c.notes || '').match(/(Start indoors [^.]+|Direct sow [^.]+|Plant May [^.]+)/i);
+  const startMethod = startMatch ? startMatch[1] : '';
+
+  document.getElementById('detail-title').textContent = c.name;
+  document.getElementById('detail-body').innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:14px;line-height:1.9;">
+      ${c.variety  ? `<tr><td style="color:var(--text-muted);width:115px;padding:3px 0;">Variety</td><td style="font-weight:500;">${esc(c.variety)}</td></tr>` : ''}
+      ${source     ? `<tr><td style="color:var(--text-muted);padding:3px 0;">Source</td><td>${esc(source)}</td></tr>` : ''}
+      ${c.location ? `<tr><td style="color:var(--text-muted);padding:3px 0;">Location</td><td>${esc(c.location)}</td></tr>` : ''}
+      <tr><td style="color:var(--text-muted);padding:3px 0;">Spacing</td><td>${sp.inRow}" in-row · ${sp.betweenRow}" between rows · ${rowsAcross} rows across 30" bed</td></tr>
+      ${c.plantDate   ? `<tr><td style="color:var(--text-muted);padding:3px 0;">Plant out</td><td>${fmt(c.plantDate)}</td></tr>` : ''}
+      ${c.harvestDate ? `<tr><td style="color:var(--text-muted);padding:3px 0;">First harvest</td><td>${fmt(c.harvestDate)}${dtm ? ` <span style="color:var(--text-muted);">(~${dtm} days)</span>` : ''}</td></tr>` : ''}
+      ${startMethod   ? `<tr><td style="color:var(--text-muted);padding:3px 0;">Start method</td><td>${esc(startMethod)}</td></tr>` : ''}
+      ${c.notes ? `<tr><td colspan="2" style="padding:10px 0 2px;border-top:1px solid var(--border);font-size:13px;color:var(--text-muted);line-height:1.6;">${esc(c.notes)}</td></tr>` : ''}
+    </table>`;
+  document.getElementById('detail-footer').innerHTML = `
+    <button class="btn btn-secondary btn-sm" onclick="editCrop('${esc(id)}');closeModal('detail')">Edit</button>
+    <button class="btn btn-primary btn-sm" onclick="closeModal('detail')">Close</button>`;
+  openModal('detail');
+}
+
+// ─────────────────────────────────────────────────────────
+// XSS-safe escape
+// ─────────────────────────────────────────────────────────
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ─────────────────────────────────────────────────────────
+// 2026 Seed Schedule (Johnny's + Row 7)
+// Zone 5a — Waitsfield, VT — transplant target: May 17
+// ─────────────────────────────────────────────────────────
+function confirmLoadSeedSchedule() {
+  if (state.crops.length || state.tasks.length || state.notes.length) {
+    if (!confirm('This will replace all existing data with your 2026 seed schedule. Continue?')) return;
+  }
+  loadSeedSchedule();
+}
+
+function loadSeedSchedule() {
+  state.crops = [];
+  state.tasks = [];
+  state.notes = [];
+
+  // Helper: add crop
+  function crop(name, type, plantDate, harvestDate, location, variety, notes) {
+    state.crops.push({ id: uid(), name, type, plantDate, harvestDate, location, variety, notes });
+  }
+  // Helper: add task
+  function task(title, due, category, priority, notes) {
+    state.tasks.push({ id: uid(), title, due, status: 'todo', category, priority, notes });
+  }
+
+  // ── VEGETABLES ─────────────────────────────────────────
+  // Onions (start indoors — LATE, start ASAP)
+  crop('Parade Onion', 'crop', '2026-05-10', '2026-08-28', '', 'Parade', 'Johnny\'s. Start indoors March 14 (10-12 wks). Sow densely in flats, thin to 1". Transplant May 10.');
+  crop('Red Carpet Onion', 'crop', '2026-05-10', '2026-08-28', '', 'Red Carpet (F1) Pelleted', 'Johnny\'s. Pelleted seed. Start indoors March 14. Same timing as Parade.');
+
+  // Shallots
+  crop('Matador Shallot', 'crop', '2026-05-10', '2026-08-23', '', 'Matador (F1)', 'Johnny\'s. Start indoors March 14 (10-12 wks). Treat like onions.');
+
+  // Peppers
+  crop('Red Ember Cayenne Pepper', 'crop', '2026-05-17', '2026-07-29', '', 'Red Ember (F1)', 'Johnny\'s. Start indoors March 14 (8-10 wks). Heat mat 80-85°F. ¼" deep.');
+  crop('Shishito Pepper', 'crop', '2026-05-17', '2026-07-19', '', 'Shishito', 'Johnny\'s. Start indoors March 14 (8-10 wks). Heat mat.');
+  crop('Early Jalapeño Pepper', 'crop', '2026-05-17', '2026-07-19', '', 'Early Jalapeño', 'Johnny\'s. Start indoors March 14 (8-10 wks). Heat mat.');
+
+  // Husk Cherry
+  crop('Goldie Husk Cherry', 'crop', '2026-05-17', '2026-07-24', '', 'Goldie', 'Johnny\'s. Start indoors March 14 (8-10 wks). Treat like peppers — heat mat, warm soil.');
+
+  // Tomatoes
+  crop('Clementine Tomato', 'crop', '2026-05-17', '2026-07-19', '', 'Clementine (F1)', 'Johnny\'s. Start indoors March 21 (6-8 wks). 80°F germination. Pot up at first true leaves.');
+  crop('Midnight Roma Tomato', 'crop', '2026-05-17', '2026-07-24', '', 'Midnight Roma', 'Row 7. Start indoors March 21 (6-8 wks).');
+  crop('Sweet Prince Tomato', 'crop', '2026-05-17', '2026-07-19', '', 'Sweet Prince', 'Row 7. Start indoors March 21 (6-8 wks).');
+
+  // Broccoli
+  crop('Belstar Broccoli', 'crop', '2026-05-17', '2026-07-24', '', 'Belstar (F1)', 'Johnny\'s. Start indoors April 3 (4-6 wks). ~70 days from transplant.');
+
+  // Cabbage
+  crop('Caraflex Cabbage', 'crop', '2026-05-17', '2026-07-22', '', 'Caraflex (F1)', 'Johnny\'s. Start indoors April 3 (4-6 wks). Pointed head, ~68 days.');
+  crop('Deadon Cabbage', 'crop', '2026-05-17', '2026-09-28', '', 'Deadon (F1)', 'Johnny\'s. Start indoors April 3. Fall/storage type — ~105 days. Savoy, very hardy.');
+  crop('Primero Cabbage', 'crop', '2026-05-17', '2026-07-17', '', 'Primero (F1)', 'Johnny\'s. Start indoors April 3. ~63 days from transplant.');
+  crop('Typhoon Cabbage', 'crop', '2026-05-17', '2026-07-24', '', 'Typhoon (F1)', 'Johnny\'s. Start indoors April 3. ~70 days from transplant.');
+
+  // Cauliflower
+  crop('Skywalker Cauliflower', 'crop', '2026-05-17', '2026-07-29', '', 'Skywalker (F1)', 'Johnny\'s. Start indoors April 3 (4-6 wks). ~75 days from transplant.');
+  crop('Veronica Cauliflower', 'crop', '2026-05-17', '2026-08-05', '', 'Veronica (F1)', 'Johnny\'s. Romanesco type. Start indoors April 3. ~82 days from transplant.');
+
+  // Kale
+  crop('Dazzling Blue Kale', 'crop', '2026-05-17', '2026-07-14', '', 'Dazzling Blue', 'Johnny\'s. Start indoors April 3 or direct sow. ~60 days to first harvest.');
+
+  // Lettuce
+  crop('Newham Lettuce', 'crop', '2026-05-17', '2026-07-04', '', 'Newham', 'Johnny\'s. Start indoors April 3. ~50 days from transplant. Succession sow.');
+  crop('Rosaine Lettuce', 'crop', '2026-05-17', '2026-07-04', '', 'Rosaine', 'Johnny\'s. Start indoors April 3. ~50 days from transplant.');
+  crop('Kolibri Lettuce', 'crop', '2026-05-17', '2026-07-07', '', 'Kolibri', 'Johnny\'s. Start indoors April 3. ~52 days from transplant.');
+
+  // Cucumbers
+  crop('Lemon Cucumber', 'crop', '2026-05-17', '2026-07-12', '', 'Lemon', 'Johnny\'s. Start indoors April 17 (3-4 wks). ~58 days from transplant.');
+  crop('Cool Customer Cucumber', 'crop', '2026-05-17', '2026-07-02', '', 'Cool Customer', 'Johnny\'s. Start indoors April 17. ~48 days from transplant.');
+  crop('Marketmore 76 Cucumber', 'crop', '2026-05-17', '2026-07-19', '', 'Marketmore 76', 'Johnny\'s. Start indoors April 17. ~65 days from transplant.');
+
+  // Squash — Johnny's
+  crop('Cha-Cha Kabocha Squash', 'crop', '2026-05-17', '2026-08-18', '', 'Cha-Cha (F1)', 'Johnny\'s. Start indoors April 17 (3-4 wks). ~95 days from transplant.');
+  crop('Sunshine Kabocha Squash', 'crop', '2026-05-17', '2026-09-02', '', 'Sunshine (F1)', 'Johnny\'s. Start indoors April 17. ~110 days from transplant. Large storage squash.');
+  crop('Winter Blush Squash', 'crop', '2026-05-17', '2026-09-05', '', 'Winter Blush (F1)', 'Johnny\'s. Start indoors April 17. ~110 days from transplant.');
+
+  // Squash — Row 7
+  crop('Tetra Squash', 'crop', '2026-05-17', '2026-08-18', '', 'Tetra', 'Row 7. Start indoors April 17. ~95 days from transplant.');
+  crop('Lodi Squash', 'crop', '2026-05-17', '2026-08-25', '', 'Lodi', 'Row 7. Start indoors April 17. ~100 days from transplant.');
+  crop('Honeypatch Squash', 'crop', '2026-05-17', '2026-08-25', '', 'Honeypatch', 'Row 7. Start indoors April 17. ~100 days from transplant.');
+  crop('Koginut Squash', 'crop', '2026-05-17', '2026-08-18', '', 'Koginut', 'Row 7. Start indoors April 17. ~95 days from transplant.');
+
+  // Direct sow — field crops
+  crop('Sugar Snap Pea', 'crop', '2026-04-15', '2026-06-16', '', 'Sugar Snap', 'Johnny\'s. Direct sow April 15. Cold tolerant — can go in early. ~62 days.');
+  crop('Trilogy Mix Bean', 'crop', '2026-05-17', '2026-07-15', '', 'Trilogy Mix', 'Johnny\'s. Direct sow after last frost (May 17). ~55 days. 3 bean mix.');
+  crop('Merlin Beet', 'crop', '2026-04-20', '2026-06-15', '', 'Merlin (F1)', 'Johnny\'s. Direct sow April 20. ~55 days.');
+  crop('Chioggia Guardsmark Beet', 'crop', '2026-04-20', '2026-06-15', '', 'Chioggia Guardsmark (Pelleted)', 'Johnny\'s. Direct sow April 20. ~55 days.');
+  crop('Formanova Beet', 'crop', '2026-04-20', '2026-06-15', '', 'Formanova', 'Johnny\'s. Direct sow April 20. Cylindrical type, great for slicing.');
+  crop('Yaya Carrot', 'crop', '2026-04-20', '2026-06-16', '', 'Yaya (F1)', 'Johnny\'s. Direct sow April 20. ~57 days. Keep moist until germination.');
+  crop('Pink Beauty Radish', 'crop', '2026-04-15', '2026-05-20', '', 'Pink Beauty', 'Johnny\'s. Direct sow April 15. ~25 days. Succession sow every 2 weeks.');
+  crop('French Breakfast Radish', 'crop', '2026-04-15', '2026-05-22', '', 'French Breakfast', 'Johnny\'s. Direct sow April 15. ~28 days.');
+  crop('Astro Arugula', 'crop', '2026-04-15', '2026-05-25', '', 'Astro', 'Johnny\'s. Direct sow April 15. ~40 days. Succession sow every 3 weeks.');
+  crop('Magic Molly Potato', 'crop', '2026-05-17', '2026-08-03', '', 'Magic Molly (Fingerling)', 'Johnny\'s. Plant May 15. ~80 days. Purple fingerling. 4" deep, 10-12" apart. Ships ~March 25.');
+
+  // ── FLOWERS ────────────────────────────────────────────
+  crop('Sweet Alyssum', 'crop', '2026-05-17', '2026-06-25', '', 'Sweet Alyssum', 'Johnny\'s. Start indoors March 21. Surface sow, needs light to germinate.');
+  crop('Champagne Bubbles Pink Iceland Poppy', 'crop', '2026-05-17', '2026-06-25', '', 'Champagne Bubbles Pink (F1)', 'Johnny\'s. Start indoors March 21. Cool germination 60°F. Do not cover seed.');
+  crop('Tower Chamois China Aster', 'crop', '2026-05-17', '2026-07-24', '', 'Tower Chamois', 'Johnny\'s. Start indoors March 21 (6-8 wks). ~70 days from transplant.');
+  crop('Cupcakes White Cosmos', 'crop', '2026-05-17', '2026-07-04', '', 'Cupcakes White', 'Johnny\'s. Start indoors April 3 or direct sow May 15. ~50 days from transplant.');
+  crop('Mexican Sunflower', 'crop', '2026-05-17', '2026-07-24', '', 'Mexican Sunflower (Tithonia)', 'Johnny\'s. Start indoors April 3 (6 wks). ~70 days from transplant. Tall — back of beds.');
+  crop('Purple Kisses Daucus', 'crop', '2026-05-17', '2026-07-04', '', 'Purple Kisses', 'Johnny\'s. Start indoors April 3 (6-8 wks). Ornamental daucus, good pollinator plant.');
+  crop('Daydream Mixture Sunflower', 'crop', '2026-05-01', '2026-07-19', '', 'Daydream Mixture (F1)', 'Johnny\'s. Start indoors ~April 24 OR direct sow May 17. ~65 days from transplant.');
+
+  // ── FLORET FLOWERS ─────────────────────────────────────
+  // Dahlias — tubers, already shipped Feb 4. Store until May 17.
+  crop('Cancan Girls Dahlia', 'crop', '2026-05-17', '2026-08-15', '', 'Cancan Girls', 'Floret (×1 tuber). Already shipped. Store cool (45-55°F), dark, dry until May 17. Plant 4-6" deep, stake at planting. ~90 days to bloom.');
+  crop("Bee's Choice Dahlia", 'crop', '2026-05-17', '2026-08-15', '', "Bee's Choice", 'Floret (×2 tubers). Store cool and dry. Plant 4-6" deep May 17. Stake at planting. ~90 days to bloom.');
+  // Celosia — start indoors April 3
+  crop('Vintage Rose Celosia', 'crop', '2026-05-17', '2026-08-15', '', 'Vintage Rose', 'Floret (×2 pkts). Start indoors April 3 (6 wks). 70-75°F germination. Heat-loving — do NOT rush outdoors. Pinch once to encourage branching.');
+  crop('Limonata Celosia', 'crop', '2026-05-17', '2026-08-15', '', 'Limonata', 'Floret (×2 pkts). Start indoors April 3 (6 wks). Same care as Vintage Rose.');
+  crop('Dusty Rose Celosia', 'crop', '2026-05-17', '2026-08-15', '', 'Dusty Rose', 'Floret (×2 pkts). Start indoors April 3 (6 wks). Same care as Vintage Rose.');
+  // Zinnias — start indoors April 10
+  crop('Little Flower Girl Zinnia', 'crop', '2026-05-17', '2026-07-31', '', 'Little Flower Girl', 'Floret (×1 pkt). Start indoors April 10 (5-6 wks). 1 per cell — do not disturb roots at transplant. ~75 days from transplant.');
+  crop('Victorian Wedding Zinnia', 'crop', '2026-05-17', '2026-07-31', '', 'Victorian Wedding', 'Floret (×2 pkts). Start indoors April 10 (5-6 wks). ~75 days from transplant.');
+
+  // ── RADICCHIO (Uprising Seeds — direct sow mid-July) ───
+  // All 8 varieties: sow July 15 for fall harvest after frost
+  crop('Sorgente Radicchio', 'crop', '2026-07-15', '2026-10-08', '', 'Sorgente (Variegato di Lusia)', 'Uprising. Direct sow July 15. ~85 days. Thin to 10-12". Heads up and improve after first frosts.');
+  crop('Mirabella Radicchio', 'crop', '2026-07-15', '2026-10-20', '', 'Mirabella (Variegato di Castelfranco)', 'Uprising (×2 pkts). Direct sow July 15. ~97 days. Speckled Castelfranco type — very ornamental, loose head.');
+  crop('Beatrice Radicchio', 'crop', '2026-07-15', '2026-10-20', '', 'Beatrice (Variegato di Castelfranco)', 'Uprising. Direct sow July 15. ~97 days. Castelfranco type, similar to Mirabella.');
+  crop('Botteniga Radicchio', 'crop', '2026-07-15', '2026-11-15', '', 'Botteniga (Tardivo)', 'Uprising. Most complex type. Direct sow July 15. Transplant in Sept. Dig up after hard frost (Nov), force in cold water 2-3 weeks to develop elongated heads. Harvest Nov-Dec.');
+  crop('Pasqualino Radicchio', 'crop', '2026-07-15', '2026-10-18', '', 'Pasqualino (Rosso di Verona)', 'Uprising (×2 pkts). Direct sow July 15. ~95 days. Classic round red head. Harvest improves after frosts.');
+  crop('Sangria Radicchio', 'crop', '2026-07-15', '2026-10-03', '', 'Sangria (Rosso di Treviso Precoce)', 'Uprising. Direct sow July 15. ~80 days. Precoce type — earlier, elongated red-and-white head.');
+  crop('Regina Rossa Radicchio', 'crop', '2026-07-15', '2026-10-03', '', 'Regina Rossa (Rosso di Treviso Precoce)', 'Uprising. Direct sow July 15. ~80 days. Precoce type, similar to Sangria.');
+  crop('Vesuvio Radicchio', 'crop', '2026-07-15', '2026-10-08', '', 'Vesuvio (Rosso di Chioggia)', 'Uprising (×2 pkts). Direct sow July 15. ~85 days. Classic tight round head — most reliable type. Great starting point.');
+
+  // ── TASKS ──────────────────────────────────────────────
+  // Floret dahlias — already on hand
+  task(
+    "Check & store Floret dahlia tubers — Cancan Girls, Bee's Choice",
+    '2026-03-14', 'crop', 'normal',
+    "Floret order already shipped Feb 4 — tubers should be on hand. Check each tuber: should be firm, not shriveled or rotting. Store in cool (45-55°F), dark, dry spot in a paper bag or box of vermiculite until May 17. Do NOT wet before planting."
+  );
+  // URGENT — already late on onions
+  task(
+    '⚠️ Start onions & shallots indoors — Parade, Red Carpet, Matador',
+    '2026-03-14', 'crop', 'high',
+    'STARTING 2 WEEKS LATE — sow now to minimize shortfall. Sow densely in 72-cell trays or flats. ¼" deep, 65-70°F. Keep moist. Thin to 1" if overcrowded. Transplant May 10 (cold-tolerant — can go out before last frost).'
+  );
+  task(
+    '⚠️ Start peppers indoors — Red Ember, Shishito, Early Jalapeño',
+    '2026-03-14', 'crop', 'high',
+    'Right on time (8-10 wks before May 17). Heat mat essential — germinate at 80-85°F. Sow ¼" deep, 2-3 seeds per cell, thin to 1. Move off heat mat once sprouted; keep 65-70°F days.'
+  );
+  task(
+    '⚠️ Start Goldie Husk Cherry indoors',
+    '2026-03-14', 'crop', 'normal',
+    '8-10 wks before May 17. Treat exactly like peppers — heat mat, warm germination. Pot up once true leaves appear.'
+  );
+  task(
+    'Start tomatoes indoors — Clementine, Midnight Roma, Sweet Prince',
+    '2026-03-21', 'crop', 'high',
+    '6-8 wks before May 17. Sow ¼" deep, 75-80°F germination (heat mat helps). Remove mat once sprouted. Pot up from cell tray to 3-4" pots at first true leaves. Keep under lights 14-16 hrs/day.'
+  );
+  task(
+    'Start flowers indoors — Sweet Alyssum, Iceland Poppy, China Aster',
+    '2026-03-21', 'crop', 'normal',
+    'Sweet Alyssum: surface sow, needs light. Iceland Poppy (Champagne Bubbles): cool germination ~60°F, do not cover seed. China Aster (Tower Chamois): 6-8 wks, normal germination 65-70°F.'
+  );
+  task(
+    'Start brassicas indoors — Belstar, Caraflex, Deadon, Primero, Typhoon, Skywalker, Veronica',
+    '2026-04-03', 'crop', 'high',
+    '4-6 wks before May 17 transplant. 65-70°F germination. Label each variety carefully. Thin to 1 per cell. Broccoli & cabbage: 4 wks is enough; cauliflower appreciates 5-6 wks.'
+  );
+  task(
+    'Start kale & lettuce indoors — Dazzling Blue, Newham, Rosaine, Kolibri',
+    '2026-04-03', 'crop', 'normal',
+    'Lettuce: surface sow or barely cover, 60-65°F germination (lettuce struggles to germinate above 75°F). Kale: 65-70°F. All ready to transplant in 4-5 wks.'
+  );
+  task(
+    'Start flowers indoors — Cosmos, Mexican Sunflower, Purple Kisses Daucus',
+    '2026-04-03', 'crop', 'normal',
+    'Cosmos (Cupcakes White): 65-70°F, 5-7 days. Mexican Sunflower: 65-70°F, 5-10 days. Purple Kisses Daucus: 60-65°F. All 6-8 wks before May 17.'
+  );
+  task(
+    'Start celosia indoors — Vintage Rose, Limonata, Dusty Rose (Floret)',
+    '2026-04-03', 'crop', 'normal',
+    'Floret celosias. 6 wks before May 17. 70-75°F germination — very heat-loving. Surface sow or cover lightly. Pinch seedlings once true leaves appear to encourage branching. Do NOT transplant until soil is warm — cold soil stunts celosia badly.'
+  );
+  task(
+    'Start zinnias indoors — Little Flower Girl, Victorian Wedding (Floret)',
+    '2026-04-10', 'crop', 'normal',
+    'Floret zinnias. 5-6 wks before May 17. 70°F germination, fast (5-7 days). Sow 1 per cell — zinnias hate root disturbance at transplant. Handle carefully, do not tease roots apart. Deadhead regularly for continuous bloom.'
+  );
+  task(
+    'Direct sow peas, arugula & radishes outdoors',
+    '2026-04-15', 'crop', 'normal',
+    'Sugar Snap Peas: 1" deep, 2" apart, inoculate with rhizobium. Arugula (Astro): broadcast or drill, barely cover. Radishes (Pink Beauty, French Breakfast): ½" deep, 1" apart, thin to 2". All cold-tolerant — go in early.'
+  );
+  task(
+    'Start cucumbers indoors — Lemon, Cool Customer, Marketmore 76',
+    '2026-04-17', 'crop', 'normal',
+    '3-4 wks before May 17. Do NOT start earlier — cucumbers decline fast in small pots. Sow 1" deep, 75-80°F. 1 plant per 4" pot. Transplant carefully (sensitive roots).'
+  );
+  task(
+    'Start squash indoors — Cha-Cha, Sunshine, Winter Blush, Tetra, Lodi, Honeypatch, Koginut',
+    '2026-04-17', 'crop', 'normal',
+    '3-4 wks before May 17. Sow 1" deep, 70-75°F. 1 per 4" pot. Label each variety! Do not start earlier — squash in small pots becomes root-bound quickly and stalls after transplant.'
+  );
+  task(
+    'Direct sow beets & carrots outdoors',
+    '2026-04-20', 'crop', 'normal',
+    'Beets (Merlin, Chioggia, Formanova): 1" deep, 2" apart, thin to 4". Each "seed" is a cluster — expect multiple sprouts. Carrots (Yaya): ¼" deep, broadcast or drill. Keep soil moist for 2+ weeks until germination. Carrot germination is slow — mark rows!'
+  );
+  task(
+    'Start sunflowers indoors — Daydream Mixture (optional)',
+    '2026-04-24', 'crop', 'low',
+    'Optional indoor start for 2-3 week head start. OR direct sow May 15. If starting indoors: 1" deep, 70°F, do not let get rootbound. Transplant at 2-3 wks.'
+  );
+  task(
+    'Begin hardening off all transplants',
+    '2026-05-01', 'crop', 'high',
+    'Move trays outdoors in a sheltered spot during the day (start with 1-2 hrs, increase daily). Bring in if frost threatened. Do this for 7-10 days before final planting. Brassicas, onions & lettuce can handle light frost; tomatoes, peppers, squash cannot.'
+  );
+  task(
+    'Transplant onions & shallots outdoors — Parade, Red Carpet, Matador',
+    '2026-05-10', 'crop', 'normal',
+    'Cold-tolerant — can go out 5 days before last frost. 4-5" apart in rows 12" apart. Water in well. Note: starting late means smaller bulbs — plant densely and harvest some as scallions to compensate.'
+  );
+  task(
+    'Plant Magic Molly seed potatoes',
+    '2026-05-17', 'crop', 'normal',
+    'Ships ~March 25 from Johnny\'s. If large, cut to 1-2 oz pieces with 2+ eyes; cure cut pieces 2 days. Plant 4" deep, 10-12" apart, rows 30" apart. Hill up as they grow.'
+  );
+  task(
+    'Transplant all main crops — tomatoes, peppers, squash, cucumbers, brassicas, kale, lettuce, husk cherry, flowers',
+    '2026-05-17', 'crop', 'high',
+    'After last frost (May 17). Tomatoes & peppers: plant deep, add compost to hole. Squash & cucumbers: handle roots gently, plant on a slight mound. Brassicas: water in with dilute fish emulsion. Lettuce: can handle light frost if hardened.'
+  );
+  task(
+    'Direct sow beans outdoors — Trilogy Mix',
+    '2026-05-17', 'crop', 'normal',
+    'Sow after last frost. 1" deep, 4" apart, rows 18" apart. Inoculate with bean inoculant for best yield. Trilogy Mix contains 3 varieties — good harvest spread.'
+  );
+  task(
+    "Plant Floret dahlia tubers — Cancan Girls, Bee's Choice",
+    '2026-05-17', 'crop', 'normal',
+    "Plant after last frost. 4-6\" deep, 18-24\" apart. Stake at planting (easier than staking once grown). Dahlias like full sun and consistent moisture once growing. Do NOT water heavily until shoots emerge — tubers can rot in cold wet soil."
+  );
+  task(
+    'Direct sow radicchio — all 8 Uprising varieties',
+    '2026-07-15', 'crop', 'high',
+    'Uprising Seeds. Sow ¼" deep, 2-3 seeds per inch in rows. Thin to 10-12" apart for full heads (or 6" for baby leaves). Keep moist through germination — summer heat dries quickly. Varieties: Sorgente, Mirabella (×2), Beatrice, Botteniga, Pasqualino (×2), Sangria, Regina Rossa, Vesuvio (×2).\n\nBotteniga (Tardivo) note: will need digging in November and forcing in cold water 2-3 weeks to develop elongated heads — see crop notes.'
+  );
+  task(
+    'Thin radicchio to final spacing',
+    '2026-08-01', 'crop', 'normal',
+    'Thin all radicchio to 10-12" apart. Remove weakest seedlings. Keep beds weeded — radicchio competes poorly with weeds when young. Watch for slugs in summer heat.'
+  );
+  task(
+    'Succession sow: radishes, arugula, lettuce (round 2)',
+    '2026-05-01', 'crop', 'low',
+    'Re-sow radishes and arugula for continuous harvest. Start another flat of lettuce indoors for transplanting early June.'
+  );
+
+  // 4-year rotation plan note
+  state.notes.push({
+    id: uid(),
+    title: '4-Year Crop Rotation Plan (No-Dig)',
+    date: '2026-03-14',
+    category: 'general',
+    body: `No-dig rotation: move crop families around beds each year. Compost top-dress
+goes on heaviest for Year 1 of each family (brassicas, nightshades, squash),
+lighter for roots (heavy compost = forked carrots/beets). Pull spent crops,
+lay compost on surface — no tillage.
+
+CROP FAMILY GROUPS (for rotation tracking):
+  A — Nightshades: tomatoes, peppers, husk cherry
+  B — Cucurbits: cucumbers, squash
+  C — Brassicas: broccoli, cabbage, cauliflower, kale
+  D — Roots/Alliums: onions, shallots, carrots, beets, potatoes
+  E — Legumes: peas, beans (nitrogen fixers — benefit next crop)
+  F — Chicories/Radicchio: rotate with roots or brassicas
+  G — Flowers: can stay in same area or rotate with any group
+
+ROTATION SCHEDULE:
+  BLOCK 1 ROWS 1-5 (nightshades + cucurbits)
+    2026: A (R1-R2), B (R3-R5)
+    2027: C — Brassicas move here (heavier compost from 2026 nightshades/squash)
+    2028: D/E — Roots & legumes
+    2029: A/B — Nightshades & cucurbits return
+
+  BLOCK 1 ROWS 6-9 (alliums, roots, legumes)
+    2026: D (R6-R8 onions/shallots/potatoes), E (R7 beans, R9 peas)
+    2027: A — Nightshades & cucurbits (benefit from legume nitrogen)
+    2028: C — Brassicas
+    2029: D/E — Roots & legumes return
+
+  BLOCK 2 ROWS 1-5 (brassicas)
+    2026: C (R1-R5)
+    2027: D/E — Roots & legumes
+    2028: A/B — Nightshades & cucurbits
+    2029: C — Brassicas return
+
+  BLOCK 2 ROWS 6-9 (quick crops → radicchio successions)
+    2026: E/D/F (arugula, radishes, lettuce, beets, carrots → radicchio)
+    2027: C — Brassicas (benefit from chicory/root residues)
+    2028: D/E — Roots & legumes
+    2029: A/B or F — Nightshades or chicories
+
+KEY NO-DIG TRANSITION NOTES:
+  — After brassicas: top-dress 2-3" compost before planting nightshades
+  — After legumes: light compost only — roots don't need the fertility boost
+  — After nightshades/squash: ideal spot for brassicas the following year
+  — Radicchio (chicory family) not related to brassicas — can follow them
+  — Potatoes: keep away from tomatoes (both solanums, share blight risk)
+    In 2027 move potatoes to where brassicas were (Block 2 R1-R5)`
+  });
+
+  // Note with full schedule summary
+  state.notes.push({
+    id: uid(),
+    title: '2026 Seed Schedule — Indoor Start Summary',
+    date: '2026-03-14',
+    category: 'crop',
+    body: `Zone 5a — Waitsfield, VT — Last frost ~May 15
+
+MARCH 14 (START NOW — URGENT):
+  • Onions: Parade, Red Carpet (10-12 wks — already 2 wks late)
+  • Shallots: Matador (same timing)
+  • Peppers: Red Ember, Shishito, Early Jalapeño (8-10 wks — right on time)
+  • Husk Cherry: Goldie (8-10 wks)
+
+MARCH 21:
+  • Tomatoes: Clementine (Johnny's), Midnight Roma, Sweet Prince (Row 7)
+  • Flowers: Sweet Alyssum, Champagne Bubbles Iceland Poppy, Tower Chamois China Aster
+
+APRIL 3:
+  • Brassicas: Belstar broccoli; Caraflex, Deadon, Primero, Typhoon cabbage; Skywalker, Veronica cauliflower
+  • Kale: Dazzling Blue
+  • Lettuce: Newham, Rosaine, Kolibri
+  • Flowers: Cupcakes White Cosmos, Mexican Sunflower, Purple Kisses Daucus
+
+APRIL 15 (DIRECT SOW OUTDOORS):
+  • Peas: Sugar Snap
+  • Arugula: Astro
+  • Radishes: Pink Beauty, French Breakfast
+
+APRIL 17 (START INDOORS):
+  • Cucumbers: Lemon, Cool Customer, Marketmore 76
+  • Squash: Cha-Cha, Sunshine, Winter Blush (Johnny's); Tetra, Lodi, Honeypatch, Koginut (Row 7)
+
+APRIL 20 (DIRECT SOW OUTDOORS):
+  • Beets: Merlin, Chioggia Guardsmark, Formanova
+  • Carrots: Yaya
+
+MAY 1: Begin hardening off
+MAY 10: Transplant onions & shallots
+MAY 17: Transplant everything else; direct sow beans; plant Magic Molly potatoes; plant Floret dahlia tubers
+
+JULY 15 (DIRECT SOW OUTDOORS — Uprising Seeds):
+  • Radicchio: Sorgente, Mirabella (×2), Beatrice, Botteniga, Pasqualino (×2),
+    Sangria, Regina Rossa, Vesuvio (×2) — all direct sow, fall harvest after frost
+  • Botteniga (Tardivo): needs November forcing in cold water — see crop notes
+
+FLORET FLOWERS (already shipped Feb 4 — tubers on hand):
+  • Dahlia tubers: Cancan Girls, Bee's Choice — store until May 17
+  • Celosia: Vintage Rose, Limonata, Dusty Rose — start indoors April 3
+  • Zinnia: Little Flower Girl, Victorian Wedding — start indoors April 10`
+  });
+
+  // ── BED LOCATION ASSIGNMENTS ───────────────────────────
+  // Block 1: 10 rows × ~22 ft × 30" — long-season, large crops
+  // Block 2: 10 rows × ~13 ft × 30" — quick crops, brassicas, direct-sow, flowers
+  //
+  // B1-R1:  Tomatoes (all 3 varieties)
+  // B1-R2:  Peppers + Goldie Husk Cherry
+  // B1-R3:  Cucumbers (trellised)
+  // B1-R4:  Squash A — Cha-Cha, Tetra, Koginut (compact types, 3 ft apart)
+  // B1-R5:  Squash B — Sunshine, Winter Blush, Lodi, Honeypatch (vining, 4 ft apart)
+  // B1-R6:  Onions (Parade, Red Carpet)
+  // B1-R7:  Shallots (north half) + Trilogy Mix Beans (south half)
+  // B1-R8:  Magic Molly Potatoes
+  // B1-R9:  Sugar Snap Peas [Apr 15] → Radicchio succession [Jul 15]: Botteniga, Sangria, Regina Rossa
+  // B1-R10: Tall flowers — Dahlias, Mexican Sunflower, Daydream Sunflower
+  //
+  // B2-R1:  Belstar Broccoli + Caraflex Cabbage
+  // B2-R2:  Primero + Typhoon Cabbage
+  // B2-R3:  Deadon Cabbage (storage type, full row)
+  // B2-R4:  Skywalker + Veronica Cauliflower
+  // B2-R5:  Dazzling Blue Kale
+  // B2-R6:  Arugula + Radishes [Apr 15] → Radicchio [Jul 15]: Mirabella, Beatrice
+  // B2-R7:  Lettuce [May 17] → Radicchio [Jul 15]: Sorgente, Pasqualino
+  // B2-R8:  Beets (3 varieties) [Apr 20] → Radicchio [Jul 15]: Vesuvio
+  // B2-R9:  Carrots (Yaya)
+  // B2-R10: Short/medium flowers — Alyssum, Poppy, Aster, Cosmos, Daucus, Celosia, Zinnia
+
+  applyLocations();
+
+  // Bed layout reference note
+  state.notes.push({
+    id: uid(),
+    title: '2026 Field Layout — Block 1 & Block 2',
+    date: '2026-03-14',
+    category: 'general',
+    body: `BLOCK 1 — 10 rows × ~22 ft × 30" wide
+  R1:  Tomatoes — Clementine, Midnight Roma, Sweet Prince (18-24" apart)
+  R2:  Peppers — Red Ember, Shishito, Early Jalapeño; Goldie Husk Cherry
+  R3:  Cucumbers — Lemon, Cool Customer, Marketmore 76 [TRELLIS]
+  R4:  Squash A — Cha-Cha, Tetra, Koginut (compact; 3 ft apart)
+  R5:  Squash B — Sunshine, Winter Blush, Lodi, Honeypatch (vining; 4 ft apart, allow to sprawl)
+  R6:  Onions — Parade, Red Carpet (4" apart)
+  R7:  Shallots Matador (north half, 6") + Trilogy Mix Beans (south half, 4")
+  R8:  Magic Molly Potatoes (10-12" apart; hill up as they grow)
+  R9:  Sugar Snap Peas [Apr 15] → RADICCHIO [Jul 15]: Botteniga, Sangria, Regina Rossa
+  R10: Tall flowers — Cancan Girls & Bee's Choice Dahlias, Mexican Sunflower, Daydream Sunflower
+
+BLOCK 2 — 10 rows × ~13 ft × 30" wide
+  R1:  Broccoli Belstar + Caraflex Cabbage
+  R2:  Primero + Typhoon Cabbage
+  R3:  Deadon Cabbage (storage/fall type — stays to late Sept)
+  R4:  Skywalker + Veronica Cauliflower
+  R5:  Dazzling Blue Kale (stays all season)
+  R6:  Arugula Astro + Radishes [Apr 15] → RADICCHIO [Jul 15]: Mirabella, Beatrice
+  R7:  Lettuce Newham, Rosaine, Kolibri [May 17] → RADICCHIO [Jul 15]: Sorgente, Pasqualino
+  R8:  Beets Merlin, Chioggia, Formanova [Apr 20] → RADICCHIO [Jul 15]: Vesuvio
+  R9:  Carrots Yaya
+  R10: Short/medium flowers — Alyssum, Iceland Poppy, China Aster, Cosmos,
+       Daucus, Celosia (×3), Zinnias (×2)
+
+SUCCESSION PLAN (radicchio, Uprising Seeds):
+  All varieties direct sow July 15 into freed beds (peas done ~Jun 16,
+  arugula/radishes done ~May 25, lettuce done ~Jul 4, beets done ~Jun 15)`
+  });
+
+  saveData();
+  renderDashboard();
+  renderCrops();
+  renderTasks();
+  renderNotes();
+  document.getElementById('seed-schedule-banner').style.display = 'none';
+  alert('✅ 2026 seed schedule loaded! Check the Tasks view for your seeding calendar and Crops for all varieties.');
+}
+
+// ─────────────────────────────────────────────────────────
+// 2026 Project Schedule (Stafford Galloway property tasks)
+// ─────────────────────────────────────────────────────────
+function loadProjectSchedule() {
+  // Estimated 2026 Saturday/Sunday dates for each project task
+  const projectTasks = [
+    { title: 'Trash and stuff purging',                      due: '2026-03-14', category: 'general',  priority: 'normal', notes: 'Clear out unwanted items before spring projects begin.' },
+    { title: 'Seed starting',                                due: '2026-03-15', category: 'crop',     priority: 'high',   notes: 'Start indoor seeds for transplant target May 17.' },
+    { title: 'Apple tree pruning',                           due: '2026-03-21', category: 'orchard',  priority: 'high',   notes: 'Prune before bud break.' },
+    { title: 'Garden bed prep, irrigation, and planting',    due: '2026-05-16', category: 'crop',     priority: 'high',   notes: 'Top-dress beds with compost. Set up drip irrigation. Begin transplanting after May 17.' },
+    { title: 'Mulch courtyard perennial beds',               due: '2026-04-18', category: 'general',  priority: 'normal', notes: 'Apply mulch to courtyard perennial beds once soil warms.' },
+    { title: 'Mulch back yard pile',                         due: '2026-04-25', category: 'general',  priority: 'normal', notes: 'Spread or consolidate back yard mulch pile.' },
+    { title: 'Clean up tree line',                           due: '2026-05-02', category: 'general',  priority: 'normal', notes: 'Timing uncertain — assess spring conditions. May shift to May/June.' },
+    { title: 'Orchard tree prep',                            due: '2026-04-04', category: 'orchard',  priority: 'normal', notes: 'Feed, mulch, and prep orchard trees for the season.' },
+    { title: 'Cherry tree planting',                         due: '2026-04-11', category: 'orchard',  priority: 'high',   notes: 'Plant new cherry tree(s) once ground is workable.' },
+    { title: 'Tree cutting and mulching ($300)',             due: '2026-04-18', category: 'general',  priority: 'normal', notes: 'Budget: $300. Schedule contractor or rent equipment.' },
+    { title: 'Front (willow hedge) garden gate',             due: '2026-05-23', category: 'general',  priority: 'normal', notes: 'Install or repair garden gate at willow hedge.' },
+    { title: 'Fence braces — front corner',                  due: '2026-05-30', category: 'general',  priority: 'normal', notes: 'Repair/add bracing to front corner fence post.' },
+    { title: 'Fence braces — south angles',                  due: '2026-06-06', category: 'general',  priority: 'normal', notes: 'Repair/add bracing to south angle fence posts.' },
+    { title: 'Driveway side siding repair, trim, and painting', due: '2026-06-20', category: 'general', priority: 'normal', notes: 'Repair and paint driveway-facing siding and trim.' },
+    { title: 'Compost bins',                                 due: '2026-07-11', category: 'general',  priority: 'normal', notes: 'Build, repair, or expand compost bin system.' },
+  ];
+
+  const existing = new Set(state.tasks.map(t => t.title.toLowerCase()));
+  let added = 0;
+  projectTasks.forEach(pt => {
+    if (!existing.has(pt.title.toLowerCase())) {
+      state.tasks.push({ id: uid(), status: 'todo', ...pt });
+      added++;
+    }
+  });
+
+  saveData();
+  renderDashboard();
+  renderTasks();
+  const banner = document.getElementById('project-schedule-banner');
+  if (banner) banner.style.display = 'none';
+  alert(`✅ ${added} project task${added !== 1 ? 's' : ''} added! Check the Tasks view to review and adjust dates.`);
+}
+
+// ─────────────────────────────────────────────────────────
+// Seed demo data if empty
+// ─────────────────────────────────────────────────────────
+function seedIfEmpty() {
+  if (state.crops.length || state.tasks.length || state.notes.length) return;
+  const t = new Date();
+  const d = (offset) => { const x = new Date(t); x.setDate(x.getDate()+offset); return x.toISOString().slice(0,10); };
+  state.crops = [
+    { id: uid(), name: 'Tomatoes', type: 'crop', plantDate: d(-40), harvestDate: d(30), location: 'Bed 2', variety: 'Cherokee Purple', notes: 'Staked. Watch for blight.' },
+    { id: uid(), name: 'Courgettes', type: 'crop', plantDate: d(-20), harvestDate: d(15), location: 'Bed 4', variety: '', notes: '' },
+    { id: uid(), name: 'Apple', type: 'orchard', plantDate: d(-730), harvestDate: d(120), location: 'North orchard', variety: "Cox's Orange Pippin", notes: 'Prune after harvest.' },
+  ];
+  state.tasks = [
+    { id: uid(), title: 'Water beds 2 & 4', due: d(1), status: 'todo', category: 'crop', priority: 'high', notes: '' },
+    { id: uid(), title: 'Apply compost to orchard', due: d(5), status: 'todo', category: 'orchard', priority: 'normal', notes: '' },
+    { id: uid(), title: 'Check irrigation system', due: d(-2), status: 'todo', category: 'general', priority: 'high', notes: 'Drip lines need inspection.' },
+    { id: uid(), title: 'Order seed potatoes', due: d(10), status: 'doing', category: 'crop', priority: 'normal', notes: '' },
+    { id: uid(), title: 'Mow paths', due: d(-7), status: 'done', category: 'general', priority: 'low', notes: '' },
+  ];
+  state.notes = [
+    { id: uid(), title: 'Spring 2025 planting notes', date: d(-60), category: 'crop', body: 'Sowed tomatoes under glass on 1st March. Transplanted to bed 2 in mid-April after hardening off for 2 weeks. Spacing 50cm.' },
+  ];
+  saveData();
+}
+
+// ─────────────────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────────────────
+seedIfEmpty();
+setCropFilter('all');
+renderDashboard();
+// Hide seed schedule banner if real data already loaded (more than demo size)
+if (state.crops.length > 5) {
+  const banner = document.getElementById('seed-schedule-banner');
+  if (banner) banner.style.display = 'none';
+}
+// Hide project schedule banner if project tasks already imported
+if (state.tasks.some(t => t.title.toLowerCase().includes('apple tree pruning') || t.title.toLowerCase().includes('cherry tree planting') || t.title.toLowerCase().includes('compost bins'))) {
+  const pb = document.getElementById('project-schedule-banner');
+  if (pb) pb.style.display = 'none';
+}
+</script>
+</body>
+</html>
