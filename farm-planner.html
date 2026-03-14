@@ -300,6 +300,58 @@
       pointer-events: none;
     }
     .cal-view-toggle { display: flex; gap: 4px; }
+    /* ── Harvest view ───────────────────────────── */
+    .harvest-month-group { margin-bottom: 20px; }
+    .harvest-month-header {
+      font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .07em; color: var(--text-muted);
+      padding: 8px 0 6px; border-bottom: 2px solid var(--border);
+      margin-bottom: 8px;
+    }
+    .harvest-timeline-header {
+      display: flex; margin-left: 220px; margin-bottom: 4px;
+    }
+    .harvest-timeline-header span {
+      flex: 1; font-size: 10px; color: var(--text-muted);
+      font-weight: 600; text-align: center;
+    }
+    .harvest-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 5px 0; border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .harvest-row:hover { background: var(--surface2); border-radius: 6px; }
+    .harvest-row:last-child { border-bottom: none; }
+    .harvest-thumb {
+      width: 36px; height: 36px; border-radius: 6px; flex-shrink: 0;
+      background: var(--surface2); display: flex; align-items: center;
+      justify-content: center; font-size: 20px; overflow: hidden;
+    }
+    .harvest-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .harvest-label {
+      width: 168px; min-width: 168px; flex-shrink: 0;
+    }
+    .harvest-label-name { font-size: 13px; font-weight: 600; line-height: 1.2; }
+    .harvest-label-meta { font-size: 11px; color: var(--text-muted); }
+    .harvest-bar-area {
+      flex: 1; position: relative; height: 28px;
+      background: var(--surface2); border-radius: 6px; overflow: hidden;
+    }
+    .harvest-bar {
+      position: absolute; top: 4px; bottom: 4px;
+      border-radius: 4px; display: flex; align-items: center;
+      padding: 0 7px; font-size: 10px; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      min-width: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+    .harvest-weeks {
+      width: 52px; min-width: 52px; flex-shrink: 0;
+      font-size: 11px; color: var(--text-muted); text-align: right;
+    }
+    .harvest-today-line {
+      position: absolute; top: 0; bottom: 0; width: 2px;
+      background: var(--warn); z-index: 1; pointer-events: none;
+    }
     /* ── Calendar nav ────────────────────────────── */
     .cal-nav {
       display: flex;
@@ -713,8 +765,9 @@
         <h2>Calendar</h2>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <div class="cal-view-toggle">
-            <button id="cal-grid-btn" class="btn btn-primary btn-sm" onclick="setCalView('month')">Month</button>
-            <button id="cal-gantt-btn" class="btn btn-secondary btn-sm" onclick="setCalView('gantt')">Gantt</button>
+            <button id="cal-grid-btn"    class="btn btn-primary btn-sm"    onclick="setCalView('month')">Month</button>
+            <button id="cal-gantt-btn"   class="btn btn-secondary btn-sm"  onclick="setCalView('gantt')">Gantt</button>
+            <button id="cal-harvest-btn" class="btn btn-secondary btn-sm"  onclick="setCalView('harvest')">Harvest</button>
           </div>
           <label id="cal-weekend-label" style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);cursor:pointer;">
             <input type="checkbox" id="cal-weekend-only" onchange="renderCalendar()" style="accent-color:var(--accent);" />
@@ -744,6 +797,10 @@
         <div class="card" style="padding:0;overflow:hidden;">
           <div class="gantt-wrap" id="gantt-container"></div>
         </div>
+      </div>
+      <!-- Harvest view -->
+      <div id="cal-harvest-view" style="display:none;">
+        <div id="harvest-container"></div>
       </div>
     </div>
 
@@ -1045,7 +1102,7 @@ function showView(name) {
   btns[labels.indexOf(name)].classList.add('active');
 
   if (name === 'dashboard') renderDashboard();
-  if (name === 'calendar') { if (calView === 'gantt') renderGantt(); else renderCalendar(); }
+  if (name === 'calendar') { if (calView === 'gantt') renderGantt(); else if (calView === 'harvest') renderHarvest(); else renderCalendar(); }
   if (name === 'crops') renderCrops();
   if (name === 'tasks') renderTasks();
   if (name === 'notes') renderNotes();
@@ -1142,15 +1199,214 @@ let calView = 'month'; // 'month' | 'gantt'
 
 function setCalView(v) {
   calView = v;
-  document.getElementById('cal-month-view').style.display  = v === 'month' ? '' : 'none';
-  document.getElementById('cal-gantt-view').style.display  = v === 'gantt'  ? '' : 'none';
-  document.getElementById('cal-grid-btn').className  = 'btn btn-sm ' + (v === 'month' ? 'btn-primary' : 'btn-secondary');
-  document.getElementById('cal-gantt-btn').className = 'btn btn-sm ' + (v === 'gantt'  ? 'btn-primary' : 'btn-secondary');
-  // month-nav controls only relevant in month view
+  document.getElementById('cal-month-view').style.display    = v === 'month'   ? '' : 'none';
+  document.getElementById('cal-gantt-view').style.display    = v === 'gantt'   ? '' : 'none';
+  document.getElementById('cal-harvest-view').style.display  = v === 'harvest' ? '' : 'none';
+  ['month','gantt','harvest'].forEach(name => {
+    const btn = document.getElementById('cal-' + (name === 'month' ? 'grid' : name) + '-btn');
+    if (btn) btn.className = 'btn btn-sm ' + (v === name ? 'btn-primary' : 'btn-secondary');
+  });
+  // month-nav + weekend toggle only relevant in month view
   const monthOnly = ['cal-prev-btn','cal-today-btn','cal-next-btn','cal-weekend-label'];
   monthOnly.forEach(id => { document.getElementById(id).style.display = v === 'month' ? '' : 'none'; });
-  if (v === 'gantt') renderGantt();
+  if (v === 'gantt')   renderGantt();
+  else if (v === 'harvest') renderHarvest();
   else renderCalendar();
+}
+
+// ─────────────────────────────────────────────────────────
+// Harvest window view
+// ─────────────────────────────────────────────────────────
+function harvestWindow(c) {
+  if (!c.harvestDate) return null;
+  const n = c.name.toLowerCase();
+  let days = 14;
+  // Estimate harvest duration by crop type
+  if (/tomato|pepper|husk cherry/.test(n))  days = 84;  // continuous until frost
+  else if (/cucumber/.test(n))              days = 56;
+  else if (/bean/.test(n))                  days = 42;
+  else if (/kale|arugula/.test(n))          days = 84;  // cut-and-come-again
+  else if (/dahlia|zinnia|celosia|cosmos|aster|daucus|alyssum|sunflower/.test(n)) days = 84;
+  else if (/radicchio/.test(n))             days = 28;
+  else if (/lettuce/.test(n))               days = 21;
+  else if (/pea/.test(n))                   days = 21;
+  else if (/beet|carrot/.test(n))           days = 35;
+  else if (/radish/.test(n))               days = 14;
+  else if (/squash/.test(n))               days = 14;   // cure & store
+  else if (/onion|shallot/.test(n))        days = 14;
+  else if (/potato/.test(n))               days = 14;
+  else if (/broccoli|cauliflower/.test(n)) days = 14;
+  else if (/cabbage/.test(n))              days = 21;
+
+  const start = new Date(c.harvestDate + 'T00:00:00');
+  const end   = new Date(start); end.setDate(end.getDate() + days);
+  // Cap at first frost for Zone 5a Waitsfield, VT (~Oct 10)
+  const frost = new Date('2026-10-10T00:00:00');
+  if (end > frost) end.setTime(frost.getTime());
+  return {
+    start: c.harvestDate,
+    end:   end.toISOString().slice(0, 10),
+    weeks: Math.ceil((end - start) / (7 * 86400000)),
+  };
+}
+
+function renderHarvest() {
+  const WINDOW_START = new Date('2026-05-17T00:00:00');
+  const WINDOW_END   = new Date('2026-10-31T00:00:00');
+  const TOTAL_DAYS   = (WINDOW_END - WINDOW_START) / 86400000;
+
+  function pct(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return Math.max(0, Math.min(100, (d - WINDOW_START) / (WINDOW_END - WINDOW_START) * 100));
+  }
+
+  const FAM_COLORS = {
+    nightshade:'#fca5a5', cucurbit:'#fcd34d', brassica:'#6ee7b7',
+    root:'#c4b5fd',       allium:'#f9a8d4',   legume:'#93c5fd',
+    potato:'#d1d5db',     radicchio:'#f0abfc', flower:'#e879f9', default:'#6ee7b7',
+  };
+
+  function getFam(c) {
+    const n = c.name.toLowerCase();
+    if (/tomato|pepper|husk cherry/.test(n)) return 'nightshade';
+    if (/squash|cucumber/.test(n))           return 'cucurbit';
+    if (/broccoli|cabbage|cauliflower|kale/.test(n)) return 'brassica';
+    if (/beet|carrot|radish|arugula/.test(n)) return 'root';
+    if (/onion|shallot/.test(n))             return 'allium';
+    if (/bean|pea/.test(n))                  return 'legume';
+    if (/potato/.test(n))                    return 'potato';
+    if (/radicchio/.test(n))                 return 'radicchio';
+    if (/dahlia|zinnia|celosia|cosmos|aster|daucus|alyssum|sunflower|poppy/.test(n)) return 'flower';
+    return 'default';
+  }
+
+  // Build rows for crops that have a harvest date
+  const rows = state.crops
+    .filter(c => c.harvestDate)
+    .map(c => ({ crop: c, win: harvestWindow(c), fam: getFam(c) }))
+    .filter(r => r.win)
+    .sort((a, b) => a.win.start > b.win.start ? 1 : -1);
+
+  // Group by harvest month
+  const groups = {};
+  const MONTHS = ['May','Jun','Jul','Aug','Sep','Oct'];
+  rows.forEach(r => {
+    const d   = new Date(r.win.start + 'T00:00:00');
+    const key = d.toLocaleDateString('en-US', { month: 'long' }) + ' ' + d.getFullYear();
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(r);
+  });
+
+  // Month tick labels for the header bar
+  const monthTicks = [];
+  let cur = new Date('2026-06-01T00:00:00');
+  while (cur <= WINDOW_END) {
+    monthTicks.push({ label: cur.toLocaleDateString('en-US',{month:'short'}), pct: pct(cur.toISOString().slice(0,10)) });
+    cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+  }
+
+  const todayPct = pct(new Date().toISOString().slice(0, 10));
+  const todayVisible = todayPct > 0 && todayPct < 100;
+
+  const container = document.getElementById('harvest-container');
+  container.innerHTML = '';
+
+  if (rows.length === 0) {
+    container.innerHTML = '<div class="card" style="padding:40px;text-align:center;color:var(--text-muted);">No harvest dates set yet.</div>';
+    return;
+  }
+
+  // Sticky timeline header
+  const stickyHdr = document.createElement('div');
+  stickyHdr.style.cssText = 'position:sticky;top:0;z-index:3;background:var(--bg);padding:8px 0 4px;margin-bottom:4px;';
+  stickyHdr.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:0 8px;">
+    <div style="width:36px;flex-shrink:0;"></div>
+    <div style="width:168px;min-width:168px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Crop</div>
+    <div style="flex:1;position:relative;height:20px;">
+      ${monthTicks.map(t => `<span style="position:absolute;left:${t.pct.toFixed(1)}%;transform:translateX(-50%);font-size:10px;font-weight:600;color:var(--text-muted);">${t.label}</span>`).join('')}
+    </div>
+    <div style="width:52px;min-width:52px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);text-align:right;">Window</div>
+  </div>`;
+  container.appendChild(stickyHdr);
+
+  Object.entries(groups).forEach(([monthLabel, groupRows]) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.cssText = 'padding:12px 16px;margin-bottom:14px;';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'harvest-month-header';
+    hdr.textContent = monthLabel;
+    card.appendChild(hdr);
+
+    groupRows.forEach(r => {
+      const row = document.createElement('div');
+      row.className = 'harvest-row';
+      row.addEventListener('click', () => openCropLayoutDetail(r.crop.id));
+
+      // Thumbnail
+      const thumb = document.createElement('div');
+      thumb.className = 'harvest-thumb';
+      const wikiTitle = WIKI_TITLES[r.crop.name];
+      const cachedUrl = wikiTitle && getImgCache()[wikiTitle] && getImgCache()[wikiTitle].url;
+      if (cachedUrl) {
+        const img = document.createElement('img');
+        img.src = cachedUrl; img.alt = r.crop.name;
+        img.onerror = () => { thumb.textContent = cropEmoji(r.crop.name); };
+        thumb.appendChild(img);
+      } else {
+        thumb.textContent = cropEmoji(r.crop.name);
+        if (wikiTitle) thumb.dataset.wiki = wikiTitle;
+      }
+
+      // Label
+      const loc = (r.crop.location || '').replace(/ \(.*\)/, '');
+      const lbl = document.createElement('div');
+      lbl.className = 'harvest-label';
+      lbl.innerHTML = `<div class="harvest-label-name">${esc(r.crop.name)}</div>
+        <div class="harvest-label-meta">${loc ? '📍 ' + esc(loc) : ''}${loc && r.win.start ? ' · ' : ''}${r.win.start ? shortFmt(r.win.start) + ' → ' + shortFmt(r.win.end) : ''}</div>`;
+
+      // Bar
+      const barArea = document.createElement('div');
+      barArea.className = 'harvest-bar-area';
+
+      // Today line
+      if (todayVisible) {
+        const tl = document.createElement('div');
+        tl.className = 'harvest-today-line';
+        tl.style.left = todayPct.toFixed(1) + '%';
+        barArea.appendChild(tl);
+      }
+
+      const l = pct(r.win.start), w = Math.max(1, pct(r.win.end) - l);
+      const bar = document.createElement('div');
+      bar.className = 'harvest-bar';
+      bar.style.left       = l.toFixed(1) + '%';
+      bar.style.width      = w.toFixed(1) + '%';
+      bar.style.background = FAM_COLORS[r.fam] || FAM_COLORS.default;
+      const shortName = r.crop.name
+        .replace(/ Tomato$| Radicchio$| Cucumber$| Squash$| Cabbage$| Broccoli$| Cauliflower$| Kale$| Onion$| Shallot$| Beet$| Carrot$| Radish$| Arugula$| Potato$| Bean$| Pea$| Dahlia$| Zinnia$| Celosia$| Sunflower$| Pepper$/i, '')
+        .replace(/Kabocha |Cayenne /gi, '').trim();
+      bar.textContent = shortName;
+      barArea.appendChild(bar);
+
+      // Weeks label
+      const wks = document.createElement('div');
+      wks.className = 'harvest-weeks';
+      wks.textContent = r.win.weeks + (r.win.weeks === 1 ? ' wk' : ' wks');
+
+      row.appendChild(thumb);
+      row.appendChild(lbl);
+      row.appendChild(barArea);
+      row.appendChild(wks);
+      card.appendChild(row);
+    });
+
+    container.appendChild(card);
+  });
+
+  // Fetch Wikipedia photos in background
+  loadCropImages();
 }
 
 function calMonth(delta) { calDate.setMonth(calDate.getMonth() + delta); renderCalendar(); }
