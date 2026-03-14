@@ -700,11 +700,11 @@
     <span class="subtitle">Farm Planner</span>
     <nav>
       <button class="active" onclick="showView('dashboard')">Dashboard</button>
-      <button onclick="showView('calendar')">Calendar</button>
+      <button onclick="showView('calendar')">Schedule</button>
+      <button onclick="showView('layout')">Layout</button>
       <button onclick="showView('crops')">Crops</button>
       <button onclick="showView('tasks')">Tasks</button>
       <button onclick="showView('notes')">Notes</button>
-      <button onclick="showView('layout')">Layout</button>
     </nav>
   </header>
 
@@ -762,7 +762,7 @@
     <!-- ── CALENDAR ───────────────────────────────────── -->
     <div id="view-calendar" class="view">
       <div class="page-header">
-        <h2>Calendar</h2>
+        <h2>Schedule</h2>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <div class="cal-view-toggle">
             <button id="cal-grid-btn"    class="btn btn-primary btn-sm"    onclick="setCalView('month')">Month</button>
@@ -1098,7 +1098,7 @@ function showView(name) {
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
   const btns = document.querySelectorAll('nav button');
-  const labels = ['dashboard','calendar','crops','tasks','notes','layout'];
+  const labels = ['dashboard','calendar','layout','crops','tasks','notes'];
   btns[labels.indexOf(name)].classList.add('active');
 
   if (name === 'dashboard') renderDashboard();
