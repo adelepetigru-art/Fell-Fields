@@ -184,6 +184,8 @@
       border-bottom: 1px solid var(--border);
     }
     .week-item:last-child { border-bottom: none; }
+    .week-item.clickable { cursor: pointer; }
+    .week-item.clickable:hover { background: var(--surface2); border-radius: 6px; }
     .week-dot {
       width: 10px; height: 10px;
       border-radius: 50%;
@@ -946,16 +948,25 @@ function renderDashboard() {
 
   // This week items
   const weekItems = [];
-  overdueTasks.forEach(t => weekItems.push({ type:'overdue', title: t.title, date:'Overdue: ' + fmt(t.due), cat: t.category }));
-  weekTasks.forEach(t => weekItems.push({ type:'task', title: t.title, date: 'Due: ' + fmt(t.due), cat: t.category }));
+  overdueTasks.forEach(t => weekItems.push({ type:'overdue', title: t.title, date:'Overdue: ' + fmt(t.due), cat: t.category, taskId: t.id }));
+  weekTasks.forEach(t => weekItems.push({ type:'task', title: t.title, date: 'Due: ' + fmt(t.due), cat: t.category, taskId: t.id }));
   state.crops.forEach(c => {
     if (c.plantDate && new Date(c.plantDate+'T12:00:00') >= now && new Date(c.plantDate+'T12:00:00') <= weekEnd) {
-      weekItems.push({ type: c.type, title: 'Plant: ' + c.name, date: fmt(c.plantDate) });
+      weekItems.push({ type: c.type, title: 'Plant: ' + c.name, date: fmt(c.plantDate), cropId: c.id });
     }
     if (c.harvestDate && new Date(c.harvestDate+'T12:00:00') >= now && new Date(c.harvestDate+'T12:00:00') <= weekEnd) {
-      weekItems.push({ type: c.type, title: 'Harvest: ' + c.name, date: fmt(c.harvestDate) });
+      weekItems.push({ type: c.type, title: 'Harvest: ' + c.name, date: fmt(c.harvestDate), cropId: c.id });
     }
   });
+
+  function makeWeekLi(item, dotClass) {
+    const li = document.createElement('li');
+    li.className = 'week-item' + (item.taskId || item.cropId ? ' clickable' : '');
+    li.innerHTML = `<span class="week-dot ${dotClass}"></span><div><div class="item-title">${esc(item.title)}</div><div class="item-date">${esc(item.date)}</div></div>`;
+    if (item.taskId) li.addEventListener('click', () => openTaskDetail(item.taskId));
+    else if (item.cropId) li.addEventListener('click', () => openCropLayoutDetail(item.cropId));
+    return li;
+  }
 
   const weekEl = document.getElementById('dash-week');
   const weekEmpty = document.getElementById('dash-week-empty');
@@ -963,26 +974,23 @@ function renderDashboard() {
   if (weekItems.length === 0) { weekEmpty.style.display = ''; } else {
     weekEmpty.style.display = 'none';
     weekItems.forEach(item => {
-      const li = document.createElement('li');
-      li.className = 'week-item';
       const dotClass = item.type === 'overdue' ? 'dot-overdue' : item.type === 'task' ? 'dot-task' : item.type === 'orchard' ? 'dot-orchard' : 'dot-crop';
-      li.innerHTML = `<span class="week-dot ${dotClass}"></span><div><div class="item-title">${esc(item.title)}</div><div class="item-date">${esc(item.date)}</div></div>`;
-      weekEl.appendChild(li);
+      weekEl.appendChild(makeWeekLi(item, dotClass));
     });
   }
 
   // Upcoming 30 days
   const upItems = [];
   state.tasks.filter(t => t.status !== 'done' && t.due && new Date(t.due+'T12:00:00') > weekEnd && new Date(t.due+'T12:00:00') <= next30)
-    .forEach(t => upItems.push({ type:'task', title: t.title, date:'Due: '+fmt(t.due) }));
+    .forEach(t => upItems.push({ type:'task', title: t.title, date:'Due: '+fmt(t.due), taskId: t.id }));
   state.crops.forEach(c => {
     if (c.plantDate) {
       const d = new Date(c.plantDate+'T12:00:00');
-      if (d > weekEnd && d <= next30) upItems.push({ type:c.type, title:'Plant: '+c.name, date:fmt(c.plantDate) });
+      if (d > weekEnd && d <= next30) upItems.push({ type:c.type, title:'Plant: '+c.name, date:fmt(c.plantDate), cropId: c.id });
     }
     if (c.harvestDate) {
       const d = new Date(c.harvestDate+'T12:00:00');
-      if (d > weekEnd && d <= next30) upItems.push({ type:c.type, title:'Harvest: '+c.name, date:fmt(c.harvestDate) });
+      if (d > weekEnd && d <= next30) upItems.push({ type:c.type, title:'Harvest: '+c.name, date:fmt(c.harvestDate), cropId: c.id });
     }
   });
   upItems.sort((a,b) => a.date > b.date ? 1 : -1);
@@ -993,11 +1001,8 @@ function renderDashboard() {
   if (upItems.length === 0) { upEmpty.style.display = ''; } else {
     upEmpty.style.display = 'none';
     upItems.slice(0, 8).forEach(item => {
-      const li = document.createElement('li');
-      li.className = 'week-item';
       const dotClass = item.type === 'task' ? 'dot-task' : item.type === 'orchard' ? 'dot-orchard' : 'dot-crop';
-      li.innerHTML = `<span class="week-dot ${dotClass}"></span><div><div class="item-title">${esc(item.title)}</div><div class="item-date">${esc(item.date)}</div></div>`;
-      upEl.appendChild(li);
+      upEl.appendChild(makeWeekLi(item, dotClass));
     });
   }
 }
