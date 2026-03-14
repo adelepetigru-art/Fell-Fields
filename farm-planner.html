@@ -440,6 +440,10 @@
     .layout-chip:hover { filter: brightness(0.92); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
     .layout-chip.dragging { opacity: 0.4; }
     .layout-row-body.drag-over { background: rgba(34,197,94,0.08); outline: 2px dashed var(--accent); outline-offset: -3px; }
+    .layout-chip { display: flex; flex-direction: row; align-items: flex-start; gap: 7px; }
+    .layout-chip-img { width: 42px; height: 42px; border-radius: 5px; object-fit: cover; flex-shrink: 0; background: rgba(0,0,0,0.06); }
+    .layout-chip-img-emoji { width: 42px; height: 42px; border-radius: 5px; flex-shrink: 0; background: rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+    .layout-chip-body { display: flex; flex-direction: column; min-width: 0; }
     .layout-chip-name { font-weight: 700; font-size: 12px; margin-bottom: 3px; }
     .layout-chip-meta { font-size: 10px; opacity: 0.75; }
     .layout-chip-dates { font-size: 10px; opacity: 0.7; margin-top: 2px; }
@@ -1509,6 +1513,158 @@ function applyLocations() {
   }
 }
 
+// Crop emoji fallback (shown instantly while photo loads)
+function cropEmoji(name) {
+  const n = name.toLowerCase();
+  if (/tomato/.test(n))           return '🍅';
+  if (/pepper|husk cherry/.test(n)) return '🫑';
+  if (/cucumber/.test(n))         return '🥒';
+  if (/squash/.test(n))           return '🎃';
+  if (/broccoli/.test(n))         return '🥦';
+  if (/cabbage/.test(n))          return '🥬';
+  if (/cauliflower/.test(n))      return '🌸';
+  if (/kale/.test(n))             return '🥬';
+  if (/lettuce/.test(n))          return '🥗';
+  if (/onion/.test(n))            return '🧅';
+  if (/shallot/.test(n))          return '🧅';
+  if (/bean/.test(n))             return '🫘';
+  if (/pea/.test(n))              return '🟢';
+  if (/beet/.test(n))             return '🔴';
+  if (/carrot/.test(n))           return '🥕';
+  if (/radish/.test(n))           return '🌱';
+  if (/arugula/.test(n))          return '🌿';
+  if (/potato/.test(n))           return '🥔';
+  if (/radicchio/.test(n))        return '🟣';
+  if (/dahlia/.test(n))           return '🌺';
+  if (/sunflower/.test(n))        return '🌻';
+  if (/zinnia|celosia|aster|cosmos|daucus|alyssum|poppy/.test(n)) return '💐';
+  return '🌱';
+}
+
+// Wikipedia article title for each crop (used for image lookup)
+const WIKI_TITLES = {
+  'Clementine Tomato':       'Tomato',
+  'Midnight Roma Tomato':    'Roma tomato',
+  'Sweet Prince Tomato':     'Tomato',
+  'Red Ember Cayenne Pepper':'Cayenne pepper',
+  'Shishito Pepper':         'Shishito',
+  'Early Jalapeño Pepper':   'Jalapeño',
+  'Goldie Husk Cherry':      'Physalis pruinosa',
+  'Lemon Cucumber':          'Cucumber',
+  'Cool Customer Cucumber':  'Cucumber',
+  'Marketmore 76 Cucumber':  'Cucumber',
+  'Belstar Broccoli':        'Broccoli',
+  'Skywalker Cauliflower':   'Cauliflower',
+  'Veronica Cauliflower':    'Romanesco broccoli',
+  'Caraflex Cabbage':        'Cabbage',
+  'Primero Cabbage':         'Red cabbage',
+  'Typhoon Cabbage':         'Cabbage',
+  'Deadon Cabbage':          'Savoy cabbage',
+  'Dazzling Blue Kale':      'Kale',
+  'Parade Onion':            'Scallion',
+  'Red Carpet Onion':        'Onion',
+  'Matador Shallot':         'Shallot',
+  'Trilogy Mix Bean':        'Green bean',
+  'Sugar Snap Pea':          'Snap pea',
+  'Astro Arugula':           'Arugula',
+  'Pink Beauty Radish':      'Radish',
+  'French Breakfast Radish': 'Radish',
+  'Merlin Beet':             'Beetroot',
+  'Chioggia Guardsmark Beet':'Chioggia beet',
+  'Formanova Beet':          'Beetroot',
+  'Yaya Carrot':             'Carrot',
+  'Newham Lettuce':          'Lettuce',
+  'Rosaine Lettuce':         'Lettuce',
+  'Kolibri Lettuce':         'Lettuce',
+  'Magic Molly Potato':      'Potato',
+  'Cha-Cha Kabocha Squash':  'Kabocha',
+  'Tetra Squash':            'Acorn squash',
+  'Koginut Squash':          'Butternut squash',
+  'Sunshine Kabocha Squash': 'Kabocha',
+  'Winter Blush Squash':     'Hubbard squash',
+  'Lodi Squash':             'Delicata squash',
+  'Honeypatch Squash':       'Butternut squash',
+  'Botteniga Radicchio':     'Radicchio',
+  'Sangria Radicchio':       'Radicchio',
+  'Regina Rossa Radicchio':  'Radicchio',
+  'Mirabella Radicchio':     'Radicchio',
+  'Beatrice Radicchio':      'Radicchio',
+  'Sorgente Radicchio':      'Radicchio',
+  'Pasqualino Radicchio':    'Radicchio',
+  'Vesuvio Radicchio':       'Radicchio',
+  'Cancan Girls Dahlia':     'Dahlia',
+  "Bee's Choice Dahlia":     'Dahlia',
+  'Mexican Sunflower':       'Tithonia rotundifolia',
+  'Daydream Mixture Sunflower': 'Helianthus annuus',
+  'Sweet Alyssum':           'Lobularia maritima',
+  'Champagne Bubbles Pink Iceland Poppy': 'Papaver nudicaule',
+  'Tower Chamois China Aster': 'Callistephus chinensis',
+  'Cupcakes White Cosmos':   'Cosmos (plant)',
+  'Purple Kisses Daucus':    'Daucus carota',
+  'Vintage Rose Celosia':    'Celosia',
+  'Limonata Celosia':        'Celosia',
+  'Dusty Rose Celosia':      'Celosia',
+  'Little Flower Girl Zinnia': 'Zinnia',
+  'Victorian Wedding Zinnia':  'Zinnia',
+};
+
+// Image cache: stored in localStorage under 'ff-img-cache'
+// Shape: { wikiTitle: { url, ts } }
+let IMG_CACHE = null;
+function getImgCache() {
+  if (!IMG_CACHE) {
+    try { IMG_CACHE = JSON.parse(localStorage.getItem('ff-img-cache') || '{}'); }
+    catch { IMG_CACHE = {}; }
+  }
+  return IMG_CACHE;
+}
+function saveImgCache() {
+  try { localStorage.setItem('ff-img-cache', JSON.stringify(IMG_CACHE)); } catch {}
+}
+
+// Fetch a Wikipedia thumbnail URL for a given article title.
+// Returns the URL string, or null if not found.
+async function fetchWikiThumb(title) {
+  const cache = getImgCache();
+  if (cache[title]) return cache[title].url;
+  try {
+    const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
+    const res  = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const imgUrl = data.thumbnail && data.thumbnail.source
+      ? data.thumbnail.source.replace(/\/\d+px-/, '/200px-')
+      : null;
+    cache[title] = { url: imgUrl, ts: Date.now() };
+    saveImgCache();
+    return imgUrl;
+  } catch { return null; }
+}
+
+// After renderLayout builds the DOM, fetch images in the background and
+// swap in <img> elements for any emoji placeholders that have a data-wiki attr.
+async function loadCropImages() {
+  const placeholders = document.querySelectorAll('[data-wiki]');
+  const seen = new Set();
+  const jobs = [];
+  placeholders.forEach(el => {
+    const title = el.dataset.wiki;
+    if (!seen.has(title)) { seen.add(title); jobs.push(title); }
+  });
+  for (const title of jobs) {
+    const url = await fetchWikiThumb(title);
+    if (!url) continue;
+    document.querySelectorAll(`[data-wiki="${CSS.escape(title)}"]`).forEach(el => {
+      const img = document.createElement('img');
+      img.className = 'layout-chip-img';
+      img.src = url;
+      img.alt = title;
+      img.onerror = () => img.replaceWith(el.cloneNode(true)); // fallback to emoji on load error
+      el.replaceWith(img);
+    });
+  }
+}
+
 // Returns { inRow, betweenRow } spacing in inches for a no-dig 30" wide bed.
 // inRow = spacing along the row length; betweenRow = spacing across the 30" width.
 // rowsAcross = floor(30 / betweenRow); total plants = rowsAcross × floor(rowLen / inRow)
@@ -1667,6 +1823,26 @@ function renderLayout() {
           chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
           chip.addEventListener('click', () => openCropLayoutDetail(e.crop.id));
 
+          // Image / emoji thumbnail
+          const wikiTitle = WIKI_TITLES[e.crop.name];
+          const cachedUrl = wikiTitle && getImgCache()[wikiTitle] && getImgCache()[wikiTitle].url;
+          if (cachedUrl) {
+            const img = document.createElement('img');
+            img.className = 'layout-chip-img';
+            img.src = cachedUrl;
+            img.alt = wikiTitle;
+            chip.appendChild(img);
+          } else {
+            const emojiEl = document.createElement('div');
+            emojiEl.className = 'layout-chip-img-emoji';
+            emojiEl.textContent = cropEmoji(e.crop.name);
+            if (wikiTitle) emojiEl.dataset.wiki = wikiTitle;
+            chip.appendChild(emojiEl);
+          }
+
+          const body = document.createElement('div');
+          body.className = 'layout-chip-body';
+
           let label = e.crop.name
             .replace(/ Tomato$| Pepper$| Cucumber$| Squash$| Cabbage$| Cauliflower$| Broccoli$| Kale$| Lettuce$| Onion$| Shallot$| Beet$| Carrot$| Radish$| Arugula$| Potato$| Bean$| Pea$| Radicchio$| Dahlia$| Celosia$| Zinnia$| Sunflower$/i, '')
             .replace(/Kabocha /i, '').replace(/Cayenne /i, '')
@@ -1680,16 +1856,17 @@ function renderLayout() {
           metaEl.className = 'layout-chip-meta';
           metaEl.textContent = `${sp.inRow}" × ${rowsAcross} rows · ~${count} plants`;
 
-          chip.appendChild(nameEl);
-          chip.appendChild(metaEl);
+          body.appendChild(nameEl);
+          body.appendChild(metaEl);
 
           if (e.crop.plantDate || e.crop.harvestDate) {
             const datesEl = document.createElement('div');
             datesEl.className = 'layout-chip-dates';
             const s = shortFmt(e.crop.plantDate), d = shortFmt(e.crop.harvestDate);
             datesEl.textContent = s && d ? `${s} → ${d}` : s || d;
-            chip.appendChild(datesEl);
+            body.appendChild(datesEl);
           }
+          chip.appendChild(body);
           return chip;
         }
 
@@ -1777,6 +1954,9 @@ function renderLayout() {
     item.innerHTML = `<span class="layout-legend-dot" style="background:${FAM_DOT[f]};border:1px solid rgba(0,0,0,0.1);"></span><span>${FAM_LABEL[f]}</span>`;
     legend.appendChild(item);
   });
+
+  // Fetch Wikipedia photos in the background — swaps emojis for real images
+  loadCropImages();
 }
 
 function openCropLayoutDetail(id) {
