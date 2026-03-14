@@ -1803,7 +1803,7 @@ function applyLocations() {
     'Honeypatch Squash':           'Block 1, Row 6',
     // R7: Potatoes — now separated from tomatoes (Block 2); prevents shared blight
     'Magic Molly Potato':          'Block 1, Row 7',
-    // R8: Peas → Radicchio (peas fix nitrogen; radicchio benefits from the boost)
+    // R8: Peas → Radicchio Aug 1 (peas harvest ~Jul 18; radicchio follows)
     'Sugar Snap Pea':              'Block 1, Row 8',
     'Botteniga Radicchio':         'Block 1, Row 8 (succession after peas)',
     'Sangria Radicchio':           'Block 1, Row 8 (succession after peas)',
@@ -2413,11 +2413,11 @@ function loadSeedSchedule() {
 
   // ── VEGETABLES ─────────────────────────────────────────
   // Onions (start indoors — LATE, start ASAP)
-  crop('Parade Onion', 'crop', '2026-05-10', '2026-08-28', '', 'Parade', 'Johnny\'s. Start indoors March 14 (10-12 wks). Sow densely in flats, thin to 1". Transplant May 10.');
-  crop('Red Carpet Onion', 'crop', '2026-05-10', '2026-08-28', '', 'Red Carpet (F1) Pelleted', 'Johnny\'s. Pelleted seed. Start indoors March 14. Same timing as Parade.');
+  crop('Parade Onion', 'crop', '2026-05-17', '2026-09-04', '', 'Parade', 'Johnny\'s. Start indoors March 14 (10-12 wks). Sow densely in flats, thin to 1". Transplant May 17.');
+  crop('Red Carpet Onion', 'crop', '2026-05-17', '2026-09-04', '', 'Red Carpet (F1) Pelleted', 'Johnny\'s. Pelleted seed. Start indoors March 14. Transplant May 17.');
 
   // Shallots
-  crop('Matador Shallot', 'crop', '2026-05-10', '2026-08-23', '', 'Matador (F1)', 'Johnny\'s. Start indoors March 14 (10-12 wks). Treat like onions.');
+  crop('Matador Shallot', 'crop', '2026-05-17', '2026-08-30', '', 'Matador (F1)', 'Johnny\'s. Start indoors March 14 (10-12 wks). Treat like onions. Transplant May 17.');
 
   // Peppers
   crop('Red Ember Cayenne Pepper', 'crop', '2026-05-17', '2026-07-29', '', 'Red Ember (F1)', 'Johnny\'s. Start indoors March 14 (8-10 wks). Heat mat 80-85°F. ¼" deep.');
@@ -2470,15 +2470,15 @@ function loadSeedSchedule() {
   crop('Koginut Squash', 'crop', '2026-05-17', '2026-08-18', '', 'Koginut', 'Row 7. Start indoors April 17. ~95 days from transplant.');
 
   // Direct sow — field crops
-  crop('Sugar Snap Pea', 'crop', '2026-04-15', '2026-06-16', '', 'Sugar Snap', 'Johnny\'s. Direct sow April 15. Cold tolerant — can go in early. ~62 days.');
+  crop('Sugar Snap Pea', 'crop', '2026-05-17', '2026-07-18', '', 'Sugar Snap', 'Johnny\'s. Direct sow May 17. ~62 days. Trellis 4-6ft. Succession radicchio follows Aug 1.');
   crop('Trilogy Mix Bean', 'crop', '2026-05-17', '2026-07-15', '', 'Trilogy Mix', 'Johnny\'s. Direct sow after last frost (May 17). ~55 days. 3 bean mix.');
-  crop('Merlin Beet', 'crop', '2026-04-20', '2026-06-15', '', 'Merlin (F1)', 'Johnny\'s. Direct sow April 20. ~55 days.');
-  crop('Chioggia Guardsmark Beet', 'crop', '2026-04-20', '2026-06-15', '', 'Chioggia Guardsmark (Pelleted)', 'Johnny\'s. Direct sow April 20. ~55 days.');
-  crop('Formanova Beet', 'crop', '2026-04-20', '2026-06-15', '', 'Formanova', 'Johnny\'s. Direct sow April 20. Cylindrical type, great for slicing.');
-  crop('Yaya Carrot', 'crop', '2026-04-20', '2026-06-16', '', 'Yaya (F1)', 'Johnny\'s. Direct sow April 20. ~57 days. Keep moist until germination.');
-  crop('Pink Beauty Radish', 'crop', '2026-04-15', '2026-05-20', '', 'Pink Beauty', 'Johnny\'s. Direct sow April 15. ~25 days. Succession sow every 2 weeks.');
-  crop('French Breakfast Radish', 'crop', '2026-04-15', '2026-05-22', '', 'French Breakfast', 'Johnny\'s. Direct sow April 15. ~28 days.');
-  crop('Astro Arugula', 'crop', '2026-04-15', '2026-05-25', '', 'Astro', 'Johnny\'s. Direct sow April 15. ~40 days. Succession sow every 3 weeks.');
+  crop('Merlin Beet', 'crop', '2026-05-17', '2026-07-11', '', 'Merlin (F1)', 'Johnny\'s. Direct sow May 17. ~55 days.');
+  crop('Chioggia Guardsmark Beet', 'crop', '2026-05-17', '2026-07-11', '', 'Chioggia Guardsmark (Pelleted)', 'Johnny\'s. Direct sow May 17. ~55 days.');
+  crop('Formanova Beet', 'crop', '2026-05-17', '2026-07-11', '', 'Formanova', 'Johnny\'s. Direct sow May 17. ~55 days. Cylindrical type, great for slicing.');
+  crop('Yaya Carrot', 'crop', '2026-05-17', '2026-07-13', '', 'Yaya (F1)', 'Johnny\'s. Direct sow May 17. ~57 days. Keep moist until germination.');
+  crop('Pink Beauty Radish', 'crop', '2026-05-17', '2026-06-11', '', 'Pink Beauty', 'Johnny\'s. Direct sow May 17. ~25 days. Succession sow every 2 weeks.');
+  crop('French Breakfast Radish', 'crop', '2026-05-17', '2026-06-14', '', 'French Breakfast', 'Johnny\'s. Direct sow May 17. ~28 days.');
+  crop('Astro Arugula', 'crop', '2026-05-17', '2026-06-26', '', 'Astro', 'Johnny\'s. Direct sow May 17. ~40 days. Succession sow every 3 weeks.');
   crop('Magic Molly Potato', 'crop', '2026-05-17', '2026-08-03', '', 'Magic Molly (Fingerling)', 'Johnny\'s. Plant May 15. ~80 days. Purple fingerling. 4" deep, 10-12" apart. Ships ~March 25.');
 
   // ── FLOWERS ────────────────────────────────────────────
@@ -2488,7 +2488,7 @@ function loadSeedSchedule() {
   crop('Cupcakes White Cosmos', 'crop', '2026-05-17', '2026-07-04', '', 'Cupcakes White', 'Johnny\'s. Start indoors April 3 or direct sow May 15. ~50 days from transplant.');
   crop('Mexican Sunflower', 'crop', '2026-05-17', '2026-07-24', '', 'Mexican Sunflower (Tithonia)', 'Johnny\'s. Start indoors April 3 (6 wks). ~70 days from transplant. Tall — back of beds.');
   crop('Purple Kisses Daucus', 'crop', '2026-05-17', '2026-07-04', '', 'Purple Kisses', 'Johnny\'s. Start indoors April 3 (6-8 wks). Ornamental daucus, good pollinator plant.');
-  crop('Daydream Mixture Sunflower', 'crop', '2026-05-01', '2026-07-19', '', 'Daydream Mixture (F1)', 'Johnny\'s. Start indoors ~April 24 OR direct sow May 17. ~65 days from transplant.');
+  crop('Daydream Mixture Sunflower', 'crop', '2026-05-17', '2026-07-21', '', 'Daydream Mixture (F1)', 'Johnny\'s. Direct sow May 17. ~65 days.');
 
   // ── FLORET FLOWERS ─────────────────────────────────────
   // Dahlias — tubers, already shipped Feb 4. Store until May 17.
@@ -2507,10 +2507,10 @@ function loadSeedSchedule() {
   crop('Sorgente Radicchio', 'crop', '2026-07-15', '2026-10-08', '', 'Sorgente (Variegato di Lusia)', 'Uprising. Direct sow July 15. ~85 days. Thin to 10-12". Heads up and improve after first frosts.');
   crop('Mirabella Radicchio', 'crop', '2026-07-15', '2026-10-20', '', 'Mirabella (Variegato di Castelfranco)', 'Uprising (×2 pkts). Direct sow July 15. ~97 days. Speckled Castelfranco type — very ornamental, loose head.');
   crop('Beatrice Radicchio', 'crop', '2026-07-15', '2026-10-20', '', 'Beatrice (Variegato di Castelfranco)', 'Uprising. Direct sow July 15. ~97 days. Castelfranco type, similar to Mirabella.');
-  crop('Botteniga Radicchio', 'crop', '2026-07-15', '2026-11-15', '', 'Botteniga (Tardivo)', 'Uprising. Most complex type. Direct sow July 15. Transplant in Sept. Dig up after hard frost (Nov), force in cold water 2-3 weeks to develop elongated heads. Harvest Nov-Dec.');
+  crop('Botteniga Radicchio', 'crop', '2026-08-01', '2026-11-15', '', 'Botteniga (Tardivo)', 'Uprising. Most complex type. Direct sow Aug 1 (follows peas in B1 R8). Transplant in Sept. Dig up after hard frost (Nov), force in cold water 2-3 weeks to develop elongated heads. Harvest Nov-Dec.');
   crop('Pasqualino Radicchio', 'crop', '2026-07-15', '2026-10-18', '', 'Pasqualino (Rosso di Verona)', 'Uprising (×2 pkts). Direct sow July 15. ~95 days. Classic round red head. Harvest improves after frosts.');
-  crop('Sangria Radicchio', 'crop', '2026-07-15', '2026-10-03', '', 'Sangria (Rosso di Treviso Precoce)', 'Uprising. Direct sow July 15. ~80 days. Precoce type — earlier, elongated red-and-white head.');
-  crop('Regina Rossa Radicchio', 'crop', '2026-07-15', '2026-10-03', '', 'Regina Rossa (Rosso di Treviso Precoce)', 'Uprising. Direct sow July 15. ~80 days. Precoce type, similar to Sangria.');
+  crop('Sangria Radicchio', 'crop', '2026-08-01', '2026-10-20', '', 'Sangria (Rosso di Treviso Precoce)', 'Uprising. Direct sow Aug 1 (follows peas in B1 R8). ~80 days. Precoce type — elongated red-and-white head.');
+  crop('Regina Rossa Radicchio', 'crop', '2026-08-01', '2026-10-20', '', 'Regina Rossa (Rosso di Treviso Precoce)', 'Uprising. Direct sow Aug 1 (follows peas in B1 R8). ~80 days. Precoce type, similar to Sangria.');
   crop('Vesuvio Radicchio', 'crop', '2026-07-15', '2026-10-08', '', 'Vesuvio (Rosso di Chioggia)', 'Uprising (×2 pkts). Direct sow July 15. ~85 days. Classic tight round head — most reliable type. Great starting point.');
 
   // ── TASKS ──────────────────────────────────────────────
@@ -2887,8 +2887,46 @@ function seedIfEmpty() {
 }
 
 // ─────────────────────────────────────────────────────────
+// Data migration — fix crop dates to May 17 plant-out
+// ─────────────────────────────────────────────────────────
+function migrateData() {
+  const DATA_VERSION = 2;
+  if ((state.dataVersion || 0) >= DATA_VERSION) return;
+
+  const fixes = {
+    'Parade Onion':               { plantDate: '2026-05-17', harvestDate: '2026-09-04' },
+    'Red Carpet Onion':           { plantDate: '2026-05-17', harvestDate: '2026-09-04' },
+    'Matador Shallot':            { plantDate: '2026-05-17', harvestDate: '2026-08-30' },
+    'Sugar Snap Pea':             { plantDate: '2026-05-17', harvestDate: '2026-07-18' },
+    'Merlin Beet':                { plantDate: '2026-05-17', harvestDate: '2026-07-11' },
+    'Chioggia Guardsmark Beet':   { plantDate: '2026-05-17', harvestDate: '2026-07-11' },
+    'Formanova Beet':             { plantDate: '2026-05-17', harvestDate: '2026-07-11' },
+    'Yaya Carrot':                { plantDate: '2026-05-17', harvestDate: '2026-07-13' },
+    'Pink Beauty Radish':         { plantDate: '2026-05-17', harvestDate: '2026-06-11' },
+    'French Breakfast Radish':    { plantDate: '2026-05-17', harvestDate: '2026-06-14' },
+    'Astro Arugula':              { plantDate: '2026-05-17', harvestDate: '2026-06-26' },
+    'Daydream Mixture Sunflower': { plantDate: '2026-05-17', harvestDate: '2026-07-21' },
+    // Push pea-succession radicchio to Aug 1 (peas clear ~Jul 18)
+    'Botteniga Radicchio':        { plantDate: '2026-08-01' },
+    'Sangria Radicchio':          { plantDate: '2026-08-01', harvestDate: '2026-10-20' },
+    'Regina Rossa Radicchio':     { plantDate: '2026-08-01', harvestDate: '2026-10-20' },
+  };
+
+  state.crops.forEach(c => {
+    if (fixes[c.name]) {
+      if (fixes[c.name].plantDate)   c.plantDate   = fixes[c.name].plantDate;
+      if (fixes[c.name].harvestDate) c.harvestDate = fixes[c.name].harvestDate;
+    }
+  });
+
+  state.dataVersion = DATA_VERSION;
+  saveData();
+}
+
+// ─────────────────────────────────────────────────────────
 // Init
 // ─────────────────────────────────────────────────────────
+migrateData();
 seedIfEmpty();
 setCropFilter('all');
 renderDashboard();
