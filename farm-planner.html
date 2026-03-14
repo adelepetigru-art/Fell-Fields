@@ -1408,7 +1408,7 @@ document.addEventListener('keydown', e => {
 function applyLocations() {
   // Bump this version whenever the default layout changes — forces a re-migration
   // of existing localStorage data while preserving future drag-and-drop moves.
-  const LAYOUT_VERSION = 2;
+  const LAYOUT_VERSION = 3;
   const forceApply = (state.layoutVersion || 0) < LAYOUT_VERSION;
 
   const locationMap = {
