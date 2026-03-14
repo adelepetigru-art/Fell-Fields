@@ -201,6 +201,106 @@
     .week-item .item-date { font-size: 12px; color: var(--text-muted); }
 
     /* ── CALENDAR ──────────────────────────────────────── */
+    /* ── Gantt ─────────────────────────────────────── */
+    .gantt-wrap { overflow-x: auto; }
+    .gantt-header-row {
+      display: flex;
+      border-bottom: 2px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      z-index: 2;
+    }
+    .gantt-label-col { width: 170px; min-width: 170px; flex-shrink: 0; padding: 6px 10px; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
+    .gantt-months { flex: 1; display: flex; position: relative; min-width: 600px; }
+    .gantt-month-cell { border-left: 1px solid var(--border); padding: 5px 6px; font-size: 11px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+    .gantt-section-title {
+      background: var(--surface2);
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .gantt-row {
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      min-height: 34px;
+      cursor: pointer;
+    }
+    .gantt-row:hover { background: var(--surface2); }
+    .gantt-row-label {
+      width: 170px;
+      min-width: 170px;
+      flex-shrink: 0;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .gantt-row-label small { display: block; font-size: 10px; color: var(--text-muted); font-weight: 400; }
+    .gantt-bar-area {
+      flex: 1;
+      position: relative;
+      min-width: 600px;
+      height: 34px;
+    }
+    .gantt-gridline {
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 1px;
+      background: var(--border);
+      pointer-events: none;
+    }
+    .gantt-today-line {
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 2px;
+      background: var(--warn);
+      pointer-events: none;
+      z-index: 1;
+    }
+    .gantt-bar {
+      position: absolute;
+      top: 7px;
+      height: 20px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      padding: 0 6px;
+      font-size: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    }
+    .gantt-marker {
+      position: absolute;
+      top: 9px;
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      transform: translateX(-50%) rotate(45deg);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+    .gantt-marker-label {
+      position: absolute;
+      top: 8px;
+      font-size: 10px;
+      font-weight: 500;
+      white-space: nowrap;
+      color: var(--text);
+      pointer-events: none;
+    }
+    .cal-view-toggle { display: flex; gap: 4px; }
+    /* ── Calendar nav ────────────────────────────── */
     .cal-nav {
       display: flex;
       align-items: center;
@@ -611,26 +711,39 @@
     <div id="view-calendar" class="view">
       <div class="page-header">
         <h2>Calendar</h2>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);cursor:pointer;">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <div class="cal-view-toggle">
+            <button id="cal-grid-btn" class="btn btn-primary btn-sm" onclick="setCalView('month')">Month</button>
+            <button id="cal-gantt-btn" class="btn btn-secondary btn-sm" onclick="setCalView('gantt')">Gantt</button>
+          </div>
+          <label id="cal-weekend-label" style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);cursor:pointer;">
             <input type="checkbox" id="cal-weekend-only" onchange="renderCalendar()" style="accent-color:var(--accent);" />
             Weekend tasks only
           </label>
-          <button class="btn btn-secondary btn-sm" onclick="calMonth(-1)">← Prev</button>
-          <button class="btn btn-secondary btn-sm" onclick="calToday()">Today</button>
-          <button class="btn btn-secondary btn-sm" onclick="calMonth(1)">Next →</button>
+          <button id="cal-prev-btn" class="btn btn-secondary btn-sm" onclick="calMonth(-1)">← Prev</button>
+          <button id="cal-today-btn" class="btn btn-secondary btn-sm" onclick="calToday()">Today</button>
+          <button id="cal-next-btn" class="btn btn-secondary btn-sm" onclick="calMonth(1)">Next →</button>
         </div>
       </div>
-      <div class="card" style="padding:16px;">
-        <div class="cal-nav">
-          <h3 id="cal-title"></h3>
+      <!-- Month grid view -->
+      <div id="cal-month-view">
+        <div class="card" style="padding:16px;">
+          <div class="cal-nav">
+            <h3 id="cal-title"></h3>
+          </div>
+          <div class="cal-grid" id="cal-grid"></div>
         </div>
-        <div class="cal-grid" id="cal-grid"></div>
+        <div style="display:flex;gap:16px;margin-top:12px;font-size:13px;color:var(--text-muted);">
+          <span><span style="background:var(--accent-light);color:var(--accent);padding:1px 7px;border-radius:3px;">■</span> Crop events</span>
+          <span><span style="background:var(--accent2-light);color:var(--accent2);padding:1px 7px;border-radius:3px;">■</span> Orchard events</span>
+          <span><span style="background:#e8f0fe;color:#3c5ea0;padding:1px 7px;border-radius:3px;">■</span> Tasks</span>
+        </div>
       </div>
-      <div style="display:flex;gap:16px;margin-top:12px;font-size:13px;color:var(--text-muted);">
-        <span><span style="background:var(--accent-light);color:var(--accent);padding:1px 7px;border-radius:3px;">■</span> Crop events</span>
-        <span><span style="background:var(--accent2-light);color:var(--accent2);padding:1px 7px;border-radius:3px;">■</span> Orchard events</span>
-        <span><span style="background:#e8f0fe;color:#3c5ea0;padding:1px 7px;border-radius:3px;">■</span> Tasks</span>
+      <!-- Gantt view -->
+      <div id="cal-gantt-view" style="display:none;">
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div class="gantt-wrap" id="gantt-container"></div>
+        </div>
       </div>
     </div>
 
@@ -932,7 +1045,7 @@ function showView(name) {
   btns[labels.indexOf(name)].classList.add('active');
 
   if (name === 'dashboard') renderDashboard();
-  if (name === 'calendar') renderCalendar();
+  if (name === 'calendar') { if (calView === 'gantt') renderGantt(); else renderCalendar(); }
   if (name === 'crops') renderCrops();
   if (name === 'tasks') renderTasks();
   if (name === 'notes') renderNotes();
@@ -1025,9 +1138,215 @@ function renderDashboard() {
 // Calendar
 // ─────────────────────────────────────────────────────────
 let calDate = new Date();
+let calView = 'month'; // 'month' | 'gantt'
+
+function setCalView(v) {
+  calView = v;
+  document.getElementById('cal-month-view').style.display  = v === 'month' ? '' : 'none';
+  document.getElementById('cal-gantt-view').style.display  = v === 'gantt'  ? '' : 'none';
+  document.getElementById('cal-grid-btn').className  = 'btn btn-sm ' + (v === 'month' ? 'btn-primary' : 'btn-secondary');
+  document.getElementById('cal-gantt-btn').className = 'btn btn-sm ' + (v === 'gantt'  ? 'btn-primary' : 'btn-secondary');
+  // month-nav controls only relevant in month view
+  const monthOnly = ['cal-prev-btn','cal-today-btn','cal-next-btn','cal-weekend-label'];
+  monthOnly.forEach(id => { document.getElementById(id).style.display = v === 'month' ? '' : 'none'; });
+  if (v === 'gantt') renderGantt();
+  else renderCalendar();
+}
 
 function calMonth(delta) { calDate.setMonth(calDate.getMonth() + delta); renderCalendar(); }
 function calToday() { calDate = new Date(); renderCalendar(); }
+
+function renderGantt() {
+  const SEASON_START = new Date('2026-03-01T00:00:00');
+  const SEASON_END   = new Date('2026-11-30T00:00:00');
+  const SEASON_DAYS  = (SEASON_END - SEASON_START) / 86400000;
+
+  // Family colours (reuse layout palette)
+  const FAM_COLORS = {
+    nightshade:'#fca5a5', cucurbit:'#fcd34d', brassica:'#6ee7b7',
+    root:'#c4b5fd', allium:'#f9a8d4', legume:'#93c5fd',
+    potato:'#d1d5db', radicchio:'#fca5a5', flower:'#e879f9',
+    orchard:'#86efac', crop:'#6ee7b7', task:'#93c5fd',
+  };
+  const TASK_CAT_COLOR = {
+    farm:'#86efac', orchard:'#fdba74', general:'#93c5fd',
+    harvest:'#fcd34d', pest:'#fca5a5', weather:'#a5f3fc',
+  };
+
+  function pct(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return Math.max(0, Math.min(100, (d - SEASON_START) / (SEASON_END - SEASON_START) * 100));
+  }
+
+  // Build month headers
+  const months = [];
+  let cur = new Date(SEASON_START);
+  while (cur <= SEASON_END) {
+    const daysInMonth = new Date(cur.getFullYear(), cur.getMonth() + 1, 0).getDate();
+    const startDay = Math.max(0, (cur - SEASON_START) / 86400000);
+    const endDay   = Math.min(SEASON_DAYS, startDay + daysInMonth);
+    months.push({
+      label: cur.toLocaleDateString('en-US', { month: 'short' }),
+      left: (startDay / SEASON_DAYS * 100).toFixed(2) + '%',
+      width: ((endDay - startDay) / SEASON_DAYS * 100).toFixed(2) + '%',
+    });
+    cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+  }
+
+  const todayPct = pct(new Date().toISOString().slice(0, 10));
+  const todayInRange = todayPct > 0 && todayPct < 100;
+
+  function makeBarArea(gridlines) {
+    const area = document.createElement('div');
+    area.className = 'gantt-bar-area';
+    // gridlines
+    months.forEach(m => {
+      const gl = document.createElement('div');
+      gl.className = 'gantt-gridline';
+      gl.style.left = m.left;
+      area.appendChild(gl);
+    });
+    // today
+    if (todayInRange) {
+      const tl = document.createElement('div');
+      tl.className = 'gantt-today-line';
+      tl.style.left = todayPct.toFixed(2) + '%';
+      tl.title = 'Today';
+      area.appendChild(tl);
+    }
+    return area;
+  }
+
+  function makeRow(labelHtml, barFn, clickFn) {
+    const row = document.createElement('div');
+    row.className = 'gantt-row';
+    if (clickFn) row.addEventListener('click', clickFn);
+    const lbl = document.createElement('div');
+    lbl.className = 'gantt-row-label';
+    lbl.innerHTML = labelHtml;
+    const area = makeBarArea();
+    barFn(area);
+    row.appendChild(lbl);
+    row.appendChild(area);
+    return row;
+  }
+
+  const container = document.getElementById('gantt-container');
+  container.innerHTML = '';
+
+  // ── Header row ──────────────────────────────────────────
+  const hdr = document.createElement('div');
+  hdr.className = 'gantt-header-row';
+  const hdrLabel = document.createElement('div');
+  hdrLabel.className = 'gantt-label-col';
+  hdrLabel.textContent = 'Crop / Task';
+  hdr.appendChild(hdrLabel);
+  const hdrMonths = document.createElement('div');
+  hdrMonths.className = 'gantt-months';
+  months.forEach(m => {
+    const mc = document.createElement('div');
+    mc.className = 'gantt-month-cell';
+    mc.style.width = m.width;
+    mc.textContent = m.label;
+    hdrMonths.appendChild(mc);
+  });
+  hdr.appendChild(hdrMonths);
+  container.appendChild(hdr);
+
+  // ── Crops section ────────────────────────────────────────
+  function getFamily(c) {
+    const n = (c.name + ' ' + (c.variety||'')).toLowerCase();
+    if (/tomato|pepper|husk cherry/.test(n)) return 'nightshade';
+    if (/squash|cucumber/.test(n))           return 'cucurbit';
+    if (/broccoli|cabbage|cauliflower|kale/.test(n)) return 'brassica';
+    if (/beet|carrot|radish|arugula/.test(n)) return 'root';
+    if (/onion|shallot/.test(n))             return 'allium';
+    if (/bean|pea/.test(n))                  return 'legume';
+    if (/potato/.test(n))                    return 'potato';
+    if (/radicchio/.test(n))                 return 'radicchio';
+    if (/dahlia|zinnia|celosia|sunflower|alyssum|cosmos|aster|daucus|poppy/.test(n)) return 'flower';
+    return c.type === 'orchard' ? 'orchard' : 'crop';
+  }
+
+  const cropsWithDates = state.crops.filter(c => c.plantDate || c.harvestDate)
+    .sort((a, b) => (a.plantDate || a.harvestDate) > (b.plantDate || b.harvestDate) ? 1 : -1);
+
+  if (cropsWithDates.length) {
+    const secCrops = document.createElement('div');
+    secCrops.className = 'gantt-section-title';
+    secCrops.textContent = '🌱 Crops';
+    container.appendChild(secCrops);
+
+    cropsWithDates.forEach(c => {
+      const fam = getFamily(c);
+      const color = FAM_COLORS[fam] || '#93c5fd';
+      const loc = c.location ? c.location.replace(/ \(.*\)/, '') : '';
+      const labelHtml = `${esc(c.name)}<small>${esc(loc)}</small>`;
+
+      const row = makeRow(labelHtml, area => {
+        if (c.plantDate && c.harvestDate) {
+          const l = pct(c.plantDate), r = pct(c.harvestDate);
+          const bar = document.createElement('div');
+          bar.className = 'gantt-bar';
+          bar.style.left  = l.toFixed(2) + '%';
+          bar.style.width = Math.max(0.5, r - l).toFixed(2) + '%';
+          bar.style.background = color;
+          const shortName = c.name.replace(/ Tomato$| Radicchio$| Cucumber$| Squash$| Cabbage$| Broccoli$| Cauliflower$| Kale$| Onion$| Shallot$| Beet$| Carrot$| Radish$| Arugula$| Potato$| Bean$| Pea$| Dahlia$| Zinnia$| Celosia$| Sunflower$| Pepper$/i, '').replace(/Kabocha /i,'').trim();
+          bar.textContent = shortName;
+          bar.title = `${c.name}: ${shortFmt(c.plantDate)} → ${shortFmt(c.harvestDate)}`;
+          area.appendChild(bar);
+        } else if (c.plantDate) {
+          const l = pct(c.plantDate);
+          const mk = document.createElement('div');
+          mk.className = 'gantt-marker';
+          mk.style.left = l.toFixed(2) + '%';
+          mk.style.background = color;
+          mk.title = `${c.name}: plant ${shortFmt(c.plantDate)}`;
+          area.appendChild(mk);
+        }
+      }, () => openCropLayoutDetail(c.id));
+
+      container.appendChild(row);
+    });
+  }
+
+  // ── Tasks section ────────────────────────────────────────
+  const tasksWithDue = state.tasks.filter(t => t.due && t.status !== 'done')
+    .sort((a, b) => a.due > b.due ? 1 : -1);
+
+  if (tasksWithDue.length) {
+    const secTasks = document.createElement('div');
+    secTasks.className = 'gantt-section-title';
+    secTasks.textContent = '📋 Tasks';
+    container.appendChild(secTasks);
+
+    tasksWithDue.forEach(t => {
+      const color = TASK_CAT_COLOR[t.category] || '#93c5fd';
+      const labelHtml = `${esc(t.title)}<small>${t.category || ''}</small>`;
+      const row = makeRow(labelHtml, area => {
+        const l = pct(t.due);
+        if (l < 0 || l > 100) return;
+        const mk = document.createElement('div');
+        mk.className = 'gantt-marker';
+        mk.style.left = l.toFixed(2) + '%';
+        mk.style.background = color;
+        mk.title = `${t.title}: due ${shortFmt(t.due)}`;
+        area.appendChild(mk);
+        // label to the right of marker
+        const lbl = document.createElement('div');
+        lbl.className = 'gantt-marker-label';
+        lbl.style.left = (l + 1.2).toFixed(2) + '%';
+        lbl.textContent = shortFmt(t.due);
+        area.appendChild(lbl);
+      }, () => openTaskDetail(t.id));
+      container.appendChild(row);
+    });
+  }
+
+  if (!cropsWithDates.length && !tasksWithDue.length) {
+    container.innerHTML += '<div style="padding:40px;text-align:center;color:var(--text-muted);">No crops or tasks with dates yet.</div>';
+  }
+}
 
 function renderCalendar() {
   const year = calDate.getFullYear();
