@@ -768,6 +768,7 @@
             <button id="cal-grid-btn"    class="btn btn-primary btn-sm"    onclick="setCalView('month')">Month</button>
             <button id="cal-gantt-btn"   class="btn btn-secondary btn-sm"  onclick="setCalView('gantt')">Gantt</button>
             <button id="cal-harvest-btn" class="btn btn-secondary btn-sm"  onclick="setCalView('harvest')">Harvest</button>
+            <button id="cal-crops-btn"   class="btn btn-secondary btn-sm"  onclick="setCalView('crops')">Crops</button>
           </div>
           <label id="cal-weekend-label" style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);cursor:pointer;">
             <input type="checkbox" id="cal-weekend-only" onchange="renderCalendar()" style="accent-color:var(--accent);" />
@@ -801,6 +802,12 @@
       <!-- Harvest view -->
       <div id="cal-harvest-view" style="display:none;">
         <div id="harvest-container"></div>
+      </div>
+      <!-- Crop Schedule (Gantt) view -->
+      <div id="cal-crops-view" style="display:none;">
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div class="gantt-wrap" id="crop-gantt-container"></div>
+        </div>
       </div>
     </div>
 
@@ -929,10 +936,20 @@
     </div>
     <div class="grid-2">
       <div class="form-row">
+        <label>Start date</label>
+        <input type="date" id="task-start" />
+      </div>
+      <div class="form-row">
         <label>Due date</label>
         <input type="date" id="task-due" />
       </div>
-      <div class="form-row">
+    </div>
+    <div class="grid-2">
+      <div class="form-row" style="margin-top:0">
+        <label>Duration (hours)</label>
+        <input type="number" id="task-duration" min="0.5" step="0.5" placeholder="e.g. 4" style="width:100%;" />
+      </div>
+      <div class="form-row" style="margin-top:0">
         <label>Status</label>
         <select id="task-status">
           <option value="todo">To Do</option>
@@ -1060,7 +1077,7 @@ function daysUntil(dateStr) {
   if (!dateStr) return null;
   const now = new Date(); now.setHours(0,0,0,0);
   const d = new Date(dateStr + 'T12:00:00');
-  return Math.round((d - now) / 86400000);
+  return Math.floor((d - now) / 86400000);
 }
 
 function startOfWeek(d) {
@@ -1102,7 +1119,7 @@ function showView(name) {
   btns[labels.indexOf(name)].classList.add('active');
 
   if (name === 'dashboard') renderDashboard();
-  if (name === 'calendar') { if (calView === 'gantt') renderGantt(); else if (calView === 'harvest') renderHarvest(); else renderCalendar(); }
+  if (name === 'calendar') { if (calView === 'gantt') renderGantt(); else if (calView === 'harvest') renderHarvest(); else if (calView === 'crops') renderCropGantt(); else renderCalendar(); }
   if (name === 'crops') renderCrops();
   if (name === 'tasks') renderTasks();
   if (name === 'notes') renderNotes();
@@ -1202,15 +1219,17 @@ function setCalView(v) {
   document.getElementById('cal-month-view').style.display    = v === 'month'   ? '' : 'none';
   document.getElementById('cal-gantt-view').style.display    = v === 'gantt'   ? '' : 'none';
   document.getElementById('cal-harvest-view').style.display  = v === 'harvest' ? '' : 'none';
-  ['month','gantt','harvest'].forEach(name => {
+  document.getElementById('cal-crops-view').style.display    = v === 'crops'   ? '' : 'none';
+  ['month','gantt','harvest','crops'].forEach(name => {
     const btn = document.getElementById('cal-' + (name === 'month' ? 'grid' : name) + '-btn');
     if (btn) btn.className = 'btn btn-sm ' + (v === name ? 'btn-primary' : 'btn-secondary');
   });
   // month-nav + weekend toggle only relevant in month view
   const monthOnly = ['cal-prev-btn','cal-today-btn','cal-next-btn','cal-weekend-label'];
   monthOnly.forEach(id => { document.getElementById(id).style.display = v === 'month' ? '' : 'none'; });
-  if (v === 'gantt')   renderGantt();
+  if (v === 'gantt')        renderGantt();
   else if (v === 'harvest') renderHarvest();
+  else if (v === 'crops')   renderCropGantt();
   else renderCalendar();
 }
 
@@ -1495,7 +1514,7 @@ function renderGantt() {
   hdr.className = 'gantt-header-row';
   const hdrLabel = document.createElement('div');
   hdrLabel.className = 'gantt-label-col';
-  hdrLabel.textContent = 'Crop / Task';
+  hdrLabel.textContent = 'Task';
   hdr.appendChild(hdrLabel);
   const hdrMonths = document.createElement('div');
   hdrMonths.className = 'gantt-months';
@@ -1509,7 +1528,82 @@ function renderGantt() {
   hdr.appendChild(hdrMonths);
   container.appendChild(hdr);
 
-  // ── Crops section ────────────────────────────────────────
+  // ── Tasks section ────────────────────────────────────────
+  const tasksWithDue = state.tasks.filter(t => t.due && t.status !== 'done')
+    .sort((a, b) => a.due > b.due ? 1 : -1);
+
+  if (tasksWithDue.length) {
+    const secTasks = document.createElement('div');
+    secTasks.className = 'gantt-section-title';
+    secTasks.textContent = '📋 Tasks';
+    container.appendChild(secTasks);
+
+    tasksWithDue.forEach(t => {
+      const color = TASK_CAT_COLOR[t.category] || '#93c5fd';
+      const labelHtml = `${esc(t.title)}<small>${t.category || ''}</small>`;
+      const row = makeRow(labelHtml, area => {
+        const r = pct(t.due);
+        if (r < 0 || r > 100) return;
+        if (t.startDate || t.duration) {
+          // Determine bar left edge
+          let l;
+          if (t.startDate) {
+            l = pct(t.startDate);
+          } else {
+            // No start date: work backwards from due using duration (hours → days)
+            const dueMs = new Date(t.due + 'T00:00:00').getTime();
+            const durationDays = t.duration / 8; // assume 8-hour workday
+            const startMs = dueMs - durationDays * 86400000;
+            const startStr = new Date(startMs).toISOString().slice(0, 10);
+            l = pct(startStr);
+          }
+          const bar = document.createElement('div');
+          bar.className = 'gantt-bar';
+          bar.style.left  = l.toFixed(2) + '%';
+          bar.style.width = Math.max(0.5, r - l).toFixed(2) + '%';
+          bar.style.background = color;
+          const durLabel = t.duration != null ? ` · ${t.duration}h` : '';
+          bar.title = `${t.title}${durLabel}: ${t.startDate ? shortFmt(t.startDate) + ' → ' : ''}${shortFmt(t.due)}`;
+          area.appendChild(bar);
+        } else {
+          // No start date or duration — show marker at due date
+          const mk = document.createElement('div');
+          mk.className = 'gantt-marker';
+          mk.style.left = r.toFixed(2) + '%';
+          mk.style.background = color;
+          mk.title = `${t.title}: due ${shortFmt(t.due)}`;
+          area.appendChild(mk);
+          const lbl = document.createElement('div');
+          lbl.className = 'gantt-marker-label';
+          lbl.style.left = (r + 1.2).toFixed(2) + '%';
+          lbl.textContent = shortFmt(t.due);
+          area.appendChild(lbl);
+        }
+      }, () => openTaskDetail(t.id));
+      container.appendChild(row);
+    });
+  }
+
+  if (!tasksWithDue.length) {
+    container.innerHTML += '<div style="padding:40px;text-align:center;color:var(--text-muted);">No tasks with due dates yet.</div>';
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Crop Schedule (Gantt) view
+// ─────────────────────────────────────────────────────────
+function renderCropGantt() {
+  const SEASON_START = new Date('2026-03-01T00:00:00');
+  const SEASON_END   = new Date('2026-11-30T00:00:00');
+  const SEASON_DAYS  = (SEASON_END - SEASON_START) / 86400000;
+
+  const FAM_COLORS = {
+    nightshade:'#fca5a5', cucurbit:'#fcd34d', brassica:'#6ee7b7',
+    root:'#c4b5fd', allium:'#f9a8d4', legume:'#93c5fd',
+    potato:'#d1d5db', radicchio:'#fca5a5', flower:'#e879f9',
+    orchard:'#86efac', crop:'#6ee7b7',
+  };
+
   function getFamily(c) {
     const n = (c.name + ' ' + (c.variety||'')).toLowerCase();
     if (/tomato|pepper|husk cherry/.test(n)) return 'nightshade';
@@ -1524,21 +1618,92 @@ function renderGantt() {
     return c.type === 'orchard' ? 'orchard' : 'crop';
   }
 
+  function pct(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return Math.max(0, Math.min(100, (d - SEASON_START) / (SEASON_END - SEASON_START) * 100));
+  }
+
+  const months = [];
+  let cur = new Date(SEASON_START);
+  while (cur <= SEASON_END) {
+    const daysInMonth = new Date(cur.getFullYear(), cur.getMonth() + 1, 0).getDate();
+    const startDay = Math.max(0, (cur - SEASON_START) / 86400000);
+    const endDay   = Math.min(SEASON_DAYS, startDay + daysInMonth);
+    months.push({
+      label: cur.toLocaleDateString('en-US', { month: 'short' }),
+      left: (startDay / SEASON_DAYS * 100).toFixed(2) + '%',
+      width: ((endDay - startDay) / SEASON_DAYS * 100).toFixed(2) + '%',
+    });
+    cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+  }
+
+  const todayPct = pct(new Date().toISOString().slice(0, 10));
+  const todayInRange = todayPct > 0 && todayPct < 100;
+
+  function makeBarArea() {
+    const area = document.createElement('div');
+    area.className = 'gantt-bar-area';
+    months.forEach(m => {
+      const gl = document.createElement('div');
+      gl.className = 'gantt-gridline';
+      gl.style.left = m.left;
+      area.appendChild(gl);
+    });
+    if (todayInRange) {
+      const tl = document.createElement('div');
+      tl.className = 'gantt-today-line';
+      tl.style.left = todayPct.toFixed(2) + '%';
+      tl.title = 'Today';
+      area.appendChild(tl);
+    }
+    return area;
+  }
+
+  function makeRow(labelHtml, barFn, clickFn) {
+    const row = document.createElement('div');
+    row.className = 'gantt-row';
+    if (clickFn) row.addEventListener('click', clickFn);
+    const lbl = document.createElement('div');
+    lbl.className = 'gantt-row-label';
+    lbl.innerHTML = labelHtml;
+    const area = makeBarArea();
+    barFn(area);
+    row.appendChild(lbl);
+    row.appendChild(area);
+    return row;
+  }
+
+  const container = document.getElementById('crop-gantt-container');
+  container.innerHTML = '';
+
+  // Header
+  const hdr = document.createElement('div');
+  hdr.className = 'gantt-header-row';
+  const hdrLabel = document.createElement('div');
+  hdrLabel.className = 'gantt-label-col';
+  hdrLabel.textContent = 'Crop';
+  hdr.appendChild(hdrLabel);
+  const hdrMonths = document.createElement('div');
+  hdrMonths.className = 'gantt-months';
+  months.forEach(m => {
+    const mc = document.createElement('div');
+    mc.className = 'gantt-month-cell';
+    mc.style.width = m.width;
+    mc.textContent = m.label;
+    hdrMonths.appendChild(mc);
+  });
+  hdr.appendChild(hdrMonths);
+  container.appendChild(hdr);
+
   const cropsWithDates = state.crops.filter(c => c.plantDate || c.harvestDate)
     .sort((a, b) => (a.plantDate || a.harvestDate) > (b.plantDate || b.harvestDate) ? 1 : -1);
 
   if (cropsWithDates.length) {
-    const secCrops = document.createElement('div');
-    secCrops.className = 'gantt-section-title';
-    secCrops.textContent = '🌱 Crops';
-    container.appendChild(secCrops);
-
     cropsWithDates.forEach(c => {
       const fam = getFamily(c);
       const color = FAM_COLORS[fam] || '#93c5fd';
       const loc = c.location ? c.location.replace(/ \(.*\)/, '') : '';
       const labelHtml = `${esc(c.name)}<small>${esc(loc)}</small>`;
-
       const row = makeRow(labelHtml, area => {
         if (c.plantDate && c.harvestDate) {
           const l = pct(c.plantDate), r = pct(c.harvestDate);
@@ -1561,46 +1726,10 @@ function renderGantt() {
           area.appendChild(mk);
         }
       }, () => openCropLayoutDetail(c.id));
-
       container.appendChild(row);
     });
-  }
-
-  // ── Tasks section ────────────────────────────────────────
-  const tasksWithDue = state.tasks.filter(t => t.due && t.status !== 'done')
-    .sort((a, b) => a.due > b.due ? 1 : -1);
-
-  if (tasksWithDue.length) {
-    const secTasks = document.createElement('div');
-    secTasks.className = 'gantt-section-title';
-    secTasks.textContent = '📋 Tasks';
-    container.appendChild(secTasks);
-
-    tasksWithDue.forEach(t => {
-      const color = TASK_CAT_COLOR[t.category] || '#93c5fd';
-      const labelHtml = `${esc(t.title)}<small>${t.category || ''}</small>`;
-      const row = makeRow(labelHtml, area => {
-        const l = pct(t.due);
-        if (l < 0 || l > 100) return;
-        const mk = document.createElement('div');
-        mk.className = 'gantt-marker';
-        mk.style.left = l.toFixed(2) + '%';
-        mk.style.background = color;
-        mk.title = `${t.title}: due ${shortFmt(t.due)}`;
-        area.appendChild(mk);
-        // label to the right of marker
-        const lbl = document.createElement('div');
-        lbl.className = 'gantt-marker-label';
-        lbl.style.left = (l + 1.2).toFixed(2) + '%';
-        lbl.textContent = shortFmt(t.due);
-        area.appendChild(lbl);
-      }, () => openTaskDetail(t.id));
-      container.appendChild(row);
-    });
-  }
-
-  if (!cropsWithDates.length && !tasksWithDue.length) {
-    container.innerHTML += '<div style="padding:40px;text-align:center;color:var(--text-muted);">No crops or tasks with dates yet.</div>';
+  } else {
+    container.innerHTML += '<div style="padding:40px;text-align:center;color:var(--text-muted);">No crops with dates yet.</div>';
   }
 }
 
@@ -1671,18 +1800,16 @@ function makeCalCell(dateStr, dayNum, otherMonth, eventMap) {
   const isWeekend = dow === 0 || dow === 6;
   const cell = document.createElement('div');
   cell.className = 'cal-cell' + (otherMonth ? ' other-month' : '') + (isWeekend ? ' weekend' : '');
+  cell.style.cursor = 'pointer';
+  const events = eventMap[dateStr] || [];
+  cell.addEventListener('click', () => openDayDetail(dateStr, events));
   const num = document.createElement('div');
   num.className = 'day-num'; num.textContent = dayNum;
   cell.appendChild(num);
-  const events = eventMap[dateStr] || [];
   events.slice(0, 3).forEach(ev => {
     const el = document.createElement('div');
     el.className = 'cal-event ' + ev.cls;
     el.textContent = ev.label;
-    if (ev.taskId) {
-      el.style.cursor = 'pointer';
-      el.addEventListener('click', e => { e.stopPropagation(); openTaskDetail(ev.taskId); });
-    }
     cell.appendChild(el);
   });
   if (events.length > 3) {
@@ -1692,6 +1819,45 @@ function makeCalCell(dateStr, dayNum, otherMonth, eventMap) {
     cell.appendChild(more);
   }
   return cell;
+}
+
+function openDayDetail(dateStr, events) {
+  const label = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  document.getElementById('detail-title').textContent = label;
+
+  if (events.length === 0) {
+    document.getElementById('detail-body').innerHTML = '<p style="color:var(--text-muted);padding:8px 0;">Nothing scheduled for this day.</p>';
+    document.getElementById('detail-footer').innerHTML = `<button class="btn btn-secondary" onclick="closeModal('detail')">Close</button>`;
+    openModal('detail');
+    return;
+  }
+
+  const items = events.map(ev => {
+    if (ev.taskId) {
+      const t = state.tasks.find(x => x.id === ev.taskId);
+      const du = t ? daysUntil(t.due) : null;
+      const overdueTag = du !== null && du < 0 && t && t.status !== 'done' ? ' <span class="tag tag-overdue">Overdue</span>' : '';
+      const priorityTag = t && t.priority === 'high' ? ' <span style="color:var(--warn);font-size:12px;">● High</span>' : '';
+      const statusLabel = t ? { todo: 'To Do', doing: 'In Progress', done: 'Done' }[t.status] || t.status : '';
+      return `<div class="week-item clickable" onclick="closeModal('detail');openTaskDetail('${ev.taskId}')" style="padding:10px 0;border-bottom:1px solid var(--border);">
+        <span class="week-dot dot-task"></span>
+        <div>
+          <div class="item-title">${esc(ev.label.replace(/^📋\s*/,''))}${overdueTag}${priorityTag}</div>
+          <div class="item-date">${statusLabel}${t && t.category ? ' · ' + t.category : ''}${t && t.notes ? '<br><span style="color:var(--text-muted);font-size:12px;">' + esc(t.notes) + '</span>' : ''}</div>
+        </div>
+      </div>`;
+    } else {
+      const dotCls = ev.cls === 'orchard' ? 'dot-orchard' : ev.cls === 'task' ? 'dot-task' : 'dot-crop';
+      return `<div class="week-item" style="padding:10px 0;border-bottom:1px solid var(--border);">
+        <span class="week-dot ${dotCls}"></span>
+        <div><div class="item-title">${esc(ev.label)}</div></div>
+      </div>`;
+    }
+  }).join('');
+
+  document.getElementById('detail-body').innerHTML = `<div style="max-height:60vh;overflow-y:auto;">${items}</div>`;
+  document.getElementById('detail-footer').innerHTML = `<button class="btn btn-secondary" onclick="closeModal('detail')">Close</button>`;
+  openModal('detail');
 }
 
 // ─────────────────────────────────────────────────────────
@@ -1837,6 +2003,7 @@ function renderTasks() {
         <div class="t-title">${esc(t.title)}</div>
         <div class="t-meta">
           ${t.due ? `<span>${isOverdue ? '⚠️ Overdue:' : '📅'} ${fmt(t.due)}</span>` : ''}
+          ${t.duration != null ? `<span>⏱ ${t.duration}h</span>` : ''}
           ${t.category ? `<span>${CATEGORY_ICONS[t.category] || ''} ${t.category}</span>` : ''}
           ${t.priority === 'high' ? '<span style="color:var(--warn)">● High priority</span>' : ''}
         </div>`;
@@ -1861,7 +2028,9 @@ function openTaskDetail(id) {
           <option value="done" ${t.status==='done'?'selected':''}>Done</option>
         </select>
       </div>
+      ${t.startDate ? `<div><strong>Start:</strong> ${fmt(t.startDate)}</div>` : ''}
       ${t.due ? `<div><strong>Due:</strong> ${fmt(t.due)}</div>` : ''}
+      ${t.duration != null ? `<div><strong>Duration:</strong> ${t.duration}h</div>` : ''}
       ${t.category ? `<div><strong>Category:</strong> ${t.category}</div>` : ''}
       ${t.priority ? `<div><strong>Priority:</strong> ${t.priority}</div>` : ''}
       ${t.notes ? `<div><strong>Notes:</strong><br><span style="color:var(--text-muted);font-size:14px;white-space:pre-wrap;">${esc(t.notes)}</span></div>` : ''}
@@ -1884,7 +2053,9 @@ function editTask(id) {
   editingId = id;
   document.getElementById('task-modal-title').textContent = 'Edit Task';
   document.getElementById('task-title').value = t.title || '';
+  document.getElementById('task-start').value = t.startDate || '';
   document.getElementById('task-due').value = t.due || '';
+  document.getElementById('task-duration').value = t.duration != null ? t.duration : '';
   document.getElementById('task-status').value = t.status || 'todo';
   document.getElementById('task-category').value = t.category || 'general';
   document.getElementById('task-priority').value = t.priority || 'normal';
@@ -1904,10 +2075,13 @@ function deleteTask(id) {
 function saveTask() {
   const title = document.getElementById('task-title').value.trim();
   if (!title) { alert('Please enter a task title.'); return; }
+  const durVal = parseFloat(document.getElementById('task-duration').value);
   const task = {
     id: editingId || uid(),
     title,
+    startDate: document.getElementById('task-start').value,
     due: document.getElementById('task-due').value,
+    duration: isNaN(durVal) ? null : durVal,
     status: document.getElementById('task-status').value,
     category: document.getElementById('task-category').value,
     priority: document.getElementById('task-priority').value,
@@ -1992,7 +2166,7 @@ function openModal(name) {
       }
       if (name === 'task') {
         document.getElementById('task-modal-title').textContent = 'Add Task';
-        ['task-title','task-due','task-notes'].forEach(id => document.getElementById(id).value = '');
+        ['task-title','task-start','task-due','task-duration','task-notes'].forEach(id => document.getElementById(id).value = '');
         document.getElementById('task-status').value = 'todo';
         document.getElementById('task-category').value = 'crop';
         document.getElementById('task-priority').value = 'normal';
@@ -2071,14 +2245,14 @@ function applyLocations() {
     'Cool Customer Cucumber':      'Block 2, Row 1',
     'Marketmore 76 Cucumber':      'Block 2, Row 1',
     // R2: Tomatoes — full sun (user preference)
-    'Clementine Tomato':           'Block 2, Row 2',
-    'Midnight Roma Tomato':        'Block 2, Row 2',
+    'Clementine Tomato':           'Block 2, Row 14',
+    'Midnight Roma Tomato':        'Block 2, Row 14',
     // R3: Tomatoes cont. + Peppers + Husk Cherry (all nightshades; full sun; similar care)
-    'Sweet Prince Tomato':         'Block 2, Row 3',
-    'Red Ember Cayenne Pepper':    'Block 2, Row 3',
-    'Shishito Pepper':             'Block 2, Row 3',
-    'Early Jalapeño Pepper':       'Block 2, Row 3',
-    'Goldie Husk Cherry':          'Block 2, Row 3',
+    'Sweet Prince Tomato':         'Block 2, Row 14',
+    'Red Ember Cayenne Pepper':    'Block 2, Row 14',
+    'Shishito Pepper':             'Block 2, Row 14',
+    'Early Jalapeño Pepper':       'Block 2, Row 14',
+    'Goldie Husk Cherry':          'Block 2, Row 14',
     // R4: Beans (nitrogen-fixing; companion to cucumbers in R1; keep away from alliums in B1)
     'Trilogy Mix Bean':            'Block 2, Row 4',
     // R5: Dahlias + Sunflowers (moved to sunny block; full sun needed; pollinators for tomatoes & cucumbers)
@@ -2377,8 +2551,9 @@ function renderLayout() {
     blocks[blk][row].push({ crop: c, succession: isSuc, fam: getFamily(c) });
   });
 
-  const BLOCK_DIMS   = { 'Block 1': '10 rows · ~22 ft · 30" wide', 'Block 2': '10 rows · ~13 ft · 30" wide' };
+  const BLOCK_DIMS   = { 'Block 1': '10 rows · ~22 ft · 30" wide', 'Block 2': '15 rows · ~13 ft · 30" wide' };
   const BLOCK_LEN_IN = { 'Block 1': 264, 'Block 2': 156 };
+  const BLOCK_ROWS   = { 'Block 1': 10, 'Block 2': 15 };
 
   const container = document.getElementById('layout-blocks');
   container.innerHTML = '';
@@ -2393,7 +2568,7 @@ function renderLayout() {
     hdr.innerHTML = `<span>${blk}</span><span class="block-dim">${BLOCK_DIMS[blk]}</span>`;
     wrap.appendChild(hdr);
 
-    for (let r = 1; r <= 10; r++) {
+    for (let r = 1; r <= (BLOCK_ROWS[blk] || 10); r++) {
       const entries = rowData[r] || [];
       const row = document.createElement('div');
       row.className = 'layout-row';
@@ -3006,7 +3181,7 @@ FLORET FLOWERS (already shipped Feb 4 — tubers on hand):
 
   // ── BED LOCATION ASSIGNMENTS ───────────────────────────
   // Block 1: 10 rows × ~22 ft × 30" — long-season, large crops
-  // Block 2: 10 rows × ~13 ft × 30" — quick crops, brassicas, direct-sow, flowers
+  // Block 2: 15 rows × ~13 ft × 30" — quick crops, brassicas, direct-sow, flowers; rows 2-3 asparagus, 11-12 strawberries, 13 garlic, 15 narcissus
   //
   // B1-R1:  Tomatoes (all 3 varieties)
   // B1-R2:  Peppers + Goldie Husk Cherry
@@ -3180,9 +3355,48 @@ function migrateData() {
 }
 
 // ─────────────────────────────────────────────────────────
+// Data migration v3 — add permanent Block 2 plantings
+// ─────────────────────────────────────────────────────────
+function migrateDataV3() {
+  const DATA_VERSION = 3;
+  if ((state.dataVersion || 0) >= DATA_VERSION) return;
+
+  const existingNames = new Set(state.crops.map(c => c.name.toLowerCase()));
+  const permanents = [
+    { name: 'Asparagus',    type: 'crop',    location: 'Block 2, Row 2', notes: 'Established perennial bed. Do not disturb roots.' },
+    { name: 'Asparagus',    type: 'crop',    location: 'Block 2, Row 3', notes: 'Established perennial bed. Do not disturb roots.' },
+    { name: 'Strawberry',   type: 'crop',    location: 'Block 2, Row 11', notes: 'Established strawberry bed.' },
+    { name: 'Strawberry',   type: 'crop',    location: 'Block 2, Row 12', notes: 'Established strawberry bed.' },
+    { name: 'Garlic',       type: 'crop',    location: 'Block 2, Row 13', notes: 'Garlic.' },
+    { name: 'Narcissus',    type: 'orchard', location: 'Block 2, Row 15', notes: 'Perennial bulbs.' },
+  ];
+
+  permanents.forEach(p => {
+    // Allow duplicates for asparagus/strawberry (two rows each) by checking name+location combo
+    const alreadyThere = state.crops.some(c => c.name === p.name && c.location === p.location);
+    if (!alreadyThere) {
+      state.crops.push({ id: uid(), plantDate: '', harvestDate: '', variety: '', ...p });
+    }
+  });
+
+  // Move nightshades out of rows 2-3 (now asparagus) → row 14
+  const nightshadeRow23 = /^Block 2,\s*Row [23]$/i;
+  const nightshadeNames = /tomato|pepper|husk cherry/i;
+  state.crops.forEach(c => {
+    if (c.location && nightshadeRow23.test(c.location) && nightshadeNames.test(c.name)) {
+      c.location = 'Block 2, Row 14';
+    }
+  });
+
+  state.dataVersion = DATA_VERSION;
+  saveData();
+}
+
+// ─────────────────────────────────────────────────────────
 // Init
 // ─────────────────────────────────────────────────────────
 migrateData();
+migrateDataV3();
 seedIfEmpty();
 setCropFilter('all');
 renderDashboard();
